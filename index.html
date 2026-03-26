@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinWordle — Finance Word Challenge</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ═══════════════════════════════════════
+  //  FIREBASE CONFIG — Replace with yours
+  // ═══════════════════════════════════════
+  const firebaseConfig = {
+    apiKey: "REPLACE_WITH_YOUR_API_KEY",
+    authDomain: "REPLACE_WITH_YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://REPLACE_WITH_YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "REPLACE_WITH_YOUR_PROJECT",
+    storageBucket: "REPLACE_WITH_YOUR_PROJECT.appspot.com",
+    messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+    appId: "REPLACE_WITH_YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  window._db = db;
+  window._ref = ref;
+  window._set = set;
+  window._get = get;
+  window._onValue = onValue;
+  window._update = update;
+  window._remove = remove;
+  window._firebaseReady = true;
+  document.dispatchEvent(new Event('firebaseReady'));
+</script>
+
+<style>
+  :root{
+    --gold:#C9A84C;--gold-light:#F0D98B;--navy:#0B1629;--navy-mid:#162240;
+    --slate:#2D4A6B;--green:#2A7A4B;--green-light:#3DAB68;
+    --yellow-light:#EDBA2A;--gray-dark:#4A5568;--gray-mid:#718096;
+    --white:#F7F5F0;--off-white:#EDE9E0;
+    --correct:#2A7A4B;--present:#C5960A;--absent:#2D3748;
+    --tile-size:56px;--tile-gap:5px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Manrope',sans-serif;background:var(--navy);color:var(--white);min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;}
+  .screen{display:none;width:100%;min-height:100vh;}
+  .screen.active{display:flex;flex-direction:column;align-items:center;}
+
+  /* SETUP */
+  #setup-screen{justify-content:flex-start;padding:2rem 1rem;background:radial-gradient(ellipse at 20% 20%,#1a2d4d 0%,var(--navy) 60%);position:relative;overflow:hidden;}
+  #setup-screen::before{content:'';position:absolute;top:-80px;right:-80px;width:400px;height:400px;border-radius:50%;border:1px solid rgba(201,168,76,.07);}
+  .logo-area{text-align:center;margin-bottom:2rem;position:relative;z-index:1;width:100%;}
+  .logo-tag{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);opacity:.8;margin-bottom:.4rem;}
+  .logo-title{font-family:'DM Serif Display',serif;font-size:clamp(2.4rem,8vw,4rem);color:var(--gold-light);letter-spacing:-1px;line-height:1;}
+  .logo-title span{color:var(--white);}
+  .logo-sub{font-size:13px;color:var(--gray-mid);margin-top:.4rem;}
+  .setup-card{background:rgba(22,34,64,.75);border:1px solid rgba(201,168,76,.2);border-radius:16px;padding:1.75rem;width:100%;max-width:500px;position:relative;z-index:1;}
+  .sec-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:.75rem;}
+  .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:1.25rem;}
+  .team-input{background:rgba(11,22,41,.6);border:1px solid rgba(201,168,76,.15);border-radius:8px;padding:8px 11px;color:var(--white);font-family:'Manrope',sans-serif;font-size:13px;outline:none;transition:border-color .2s;width:100%;}
+  .team-input:focus{border-color:rgba(201,168,76,.5);}
+  .team-input::placeholder{color:rgba(255,255,255,.22);}
+  .divider{height:1px;background:rgba(201,168,76,.12);margin:1.25rem 0;}
+  .scoring-info{background:rgba(11,22,41,.5);border-radius:10px;padding:.9rem 1rem;font-size:13px;color:var(--gray-mid);line-height:1.7;margin-bottom:1.25rem;}
+  .scoring-info strong{color:var(--gold-light);font-weight:600;}
+  .btn-primary{width:100%;padding:13px;background:var(--gold);color:var(--navy);font-family:'Manrope',sans-serif;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;letter-spacing:.3px;transition:.2s;}
+  .btn-primary:hover{background:var(--gold-light);}
+  .btn-primary:active{transform:scale(.99);}
+  .info-box{background:rgba(42,122,75,.08);border:1px solid rgba(42,122,75,.25);border-radius:10px;padding:.9rem 1rem;font-size:13px;color:var(--off-white);line-height:1.7;margin-bottom:1.25rem;}
+  .info-box strong{color:var(--green-light);}
+
+  /* PLAYER SELECT */
+  #player-select-screen{justify-content:center;padding:2rem 1rem;background:radial-gradient(ellipse at 50% 0%,#1a2d4d 0%,var(--navy) 60%);}
+  .ps-card{background:rgba(22,34,64,.8);border:1px solid rgba(201,168,76,.2);border-radius:16px;padding:2rem;width:100%;max-width:460px;text-align:center;}
+  .ps-round-badge{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);background:rgba(201,168,76,.1);padding:4px 12px;border-radius:20px;border:1px solid rgba(201,168,76,.2);display:inline-block;margin-bottom:1.25rem;}
+  .ps-title{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--gold-light);margin-bottom:.4rem;}
+  .ps-subtitle{font-size:13px;color:var(--gray-mid);margin-bottom:1.25rem;}
+  .team-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem;}
+  .team-select-btn{padding:10px 8px;background:rgba(11,22,41,.5);border:1px solid rgba(201,168,76,.15);border-radius:9px;color:var(--white);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;position:relative;}
+  .team-select-btn:hover{border-color:rgba(201,168,76,.4);background:rgba(201,168,76,.08);}
+  .team-select-btn.done{opacity:.45;pointer-events:none;border-color:rgba(42,122,75,.3);}
+  .team-select-btn.done::after{content:'✓';position:absolute;top:4px;right:7px;font-size:10px;color:var(--green-light);}
+
+  /* WAITING LOBBY */
+  #lobby-screen{justify-content:center;padding:2rem 1rem;background:radial-gradient(ellipse at 50% 0%,#1a2d4d 0%,var(--navy) 60%);}
+  .lobby-card{background:rgba(22,34,64,.8);border:1px solid rgba(201,168,76,.2);border-radius:16px;padding:2rem;width:100%;max-width:460px;text-align:center;}
+  .lobby-title{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--gold-light);margin-bottom:.4rem;}
+  .lobby-sub{font-size:13px;color:var(--gray-mid);margin-bottom:1.5rem;}
+  .lobby-team-name{font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--gold);margin-bottom:1.5rem;}
+  .lobby-dots{display:flex;justify-content:center;gap:8px;margin-bottom:1.5rem;}
+  .lobby-dot{width:10px;height:10px;border-radius:50%;background:rgba(201,168,76,.2);animation:pulse 1.4s ease-in-out infinite;}
+  .lobby-dot:nth-child(2){animation-delay:.2s;}
+  .lobby-dot:nth-child(3){animation-delay:.4s;}
+  @keyframes pulse{0%,100%{background:rgba(201,168,76,.2);}50%{background:var(--gold);}}
+  .lobby-status{font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-mid);margin-bottom:1rem;}
+  .round-starting-msg{font-size:14px;color:var(--green-light);font-weight:600;margin-top:.5rem;}
+
+  /* GAME */
+  #game-screen{background:var(--navy);padding-bottom:2rem;}
+  .game-header{width:100%;max-width:600px;padding:1rem 1rem .75rem;}
+  .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;}
+  .round-badge{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);background:rgba(201,168,76,.1);padding:4px 10px;border-radius:20px;border:1px solid rgba(201,168,76,.2);}
+  .timer-display{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--white);letter-spacing:2px;}
+  .timer-display.warning{color:var(--yellow-light);}
+  .timer-display.danger{color:#E05252;}
+  .team-bar{display:flex;align-items:center;gap:8px;background:rgba(22,34,64,.8);border:1px solid rgba(201,168,76,.15);border-radius:10px;padding:8px 14px;}
+  .team-indicator{width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+  .team-name-display{font-size:14px;font-weight:700;flex:1;}
+  .score-chip{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);background:rgba(201,168,76,.08);padding:3px 8px;border-radius:6px;}
+  .header-divider{height:1px;background:rgba(201,168,76,.1);margin-top:.75rem;}
+  .clue-area{width:100%;max-width:480px;padding:.75rem 1rem .4rem;text-align:center;}
+  .clue-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-mid);margin-bottom:.3rem;}
+  .clue-text{font-size:14px;color:var(--off-white);line-height:1.5;font-style:italic;}
+  .grid-wrapper{display:flex;justify-content:center;padding:.6rem 1rem;}
+  .grid{display:grid;gap:var(--tile-gap);}
+  .tile{width:var(--tile-size);height:var(--tile-size);border:2px solid rgba(255,255,255,.12);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:22px;font-weight:500;text-transform:uppercase;color:var(--white);background:rgba(22,34,64,.6);user-select:none;}
+  .tile.filled{border-color:rgba(255,255,255,.35);}
+  .tile.correct{background:var(--correct);border-color:var(--correct);}
+  .tile.present{background:var(--present);border-color:var(--present);}
+  .tile.absent{background:var(--absent);border-color:var(--absent);}
+  .tile.pop{animation:tpop .1s ease;}
+  .tile.flip{animation:tflip .5s ease forwards;}
+  .tile.shake{animation:tshake .5s ease;}
+  .tile.bounce{animation:tbounce .4s ease;}
+  @keyframes tpop{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+  @keyframes tflip{0%{transform:rotateX(0)}50%{transform:rotateX(-90deg)}100%{transform:rotateX(0)}}
+  @keyframes tshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  @keyframes tbounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-12px)}70%{transform:translateY(-6px)}}
+  .message-bar{height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;letter-spacing:.3px;}
+  .message-bar.success{color:var(--green-light);}
+  .message-bar.error{color:#E05252;}
+  .keyboard{width:100%;max-width:480px;padding:.4rem .75rem .8rem;display:flex;flex-direction:column;gap:5px;}
+  .kb-row{display:flex;justify-content:center;gap:4px;}
+  .key{height:50px;min-width:34px;padding:0 5px;background:rgba(45,74,107,.8);border:none;border-radius:6px;color:var(--white);font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;text-transform:uppercase;user-select:none;transition:.15s;}
+  .key:active{transform:scale(.95);}
+  .key.wide{min-width:52px;font-size:11px;}
+  .key.correct{background:var(--correct);}
+  .key.present{background:var(--present);color:var(--navy);}
+  .key.absent{background:rgba(20,30,50,.8);color:rgba(255,255,255,.3);}
+
+  /* WAITING FOR OTHERS */
+  #waiting-screen{justify-content:center;padding:2rem 1rem;background:var(--navy);}
+  .waiting-card{background:rgba(22,34,64,.8);border:1px solid rgba(201,168,76,.2);border-radius:16px;padding:2rem;width:100%;max-width:460px;text-align:center;}
+  .waiting-title{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--gold-light);margin-bottom:.4rem;}
+  .waiting-sub{font-size:13px;color:var(--gray-mid);margin-bottom:1.5rem;}
+  .waiting-word-reveal{font-family:'DM Serif Display',serif;font-size:2rem;color:var(--gold-light);letter-spacing:8px;text-transform:uppercase;margin:1rem 0 .5rem;}
+  .waiting-def{font-size:13px;color:var(--gray-mid);font-style:italic;line-height:1.6;margin-bottom:1.5rem;}
+  .progress-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.5rem;}
+  .tpc{background:rgba(22,34,64,.7);border:1px solid rgba(201,168,76,.1);border-radius:10px;padding:10px 8px;text-align:center;transition:.3s;}
+  .tpc.finished{border-color:rgba(42,122,75,.4);background:rgba(42,122,75,.08);}
+  .tpc.playing{border-color:rgba(201,168,76,.3);background:rgba(201,168,76,.05);}
+  .tpc-name{font-size:11px;font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tpc-status{font-family:'DM Mono',monospace;font-size:10px;color:var(--gray-mid);}
+  .tpc-score{font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--gold-light);margin-top:2px;}
+
+  /* RESULT */
+  #result-screen{justify-content:center;padding:2rem 1rem;background:radial-gradient(ellipse at 70% 30%,#1a2d4d 0%,var(--navy) 60%);}
+  .result-card{background:rgba(22,34,64,.8);border:1px solid rgba(201,168,76,.2);border-radius:16px;padding:2rem;width:100%;max-width:480px;text-align:center;}
+  .result-word{font-family:'DM Serif Display',serif;font-size:2.8rem;color:var(--gold-light);letter-spacing:8px;text-transform:uppercase;margin:1rem 0;}
+  .result-definition{font-size:13px;color:var(--gray-mid);font-style:italic;line-height:1.6;margin-bottom:1.5rem;}
+  .score-reveal{background:rgba(11,22,41,.6);border-radius:12px;padding:1rem;margin-bottom:1.25rem;}
+  .score-reveal-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:.6rem;}
+  .score-big{font-family:'DM Serif Display',serif;font-size:3rem;color:var(--gold-light);line-height:1;}
+  .score-big span{font-size:1.1rem;color:var(--gray-mid);margin-left:4px;}
+  .score-breakdown{font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-mid);margin-top:.3rem;}
+
+  /* LEADERBOARD */
+  #leaderboard-screen{justify-content:flex-start;padding:2rem 1rem;background:var(--navy);}
+  .lb-header{text-align:center;margin-bottom:1.5rem;width:100%;max-width:620px;}
+  .lb-title{font-family:'DM Serif Display',serif;font-size:2rem;color:var(--gold-light);margin-bottom:.2rem;}
+  .lb-subtitle{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-mid);}
+  .lb-table{width:100%;max-width:620px;border-collapse:separate;border-spacing:0 5px;}
+  .lb-table thead th{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);opacity:.7;padding:3px 12px;text-align:left;}
+  .lb-table thead th:last-child{text-align:right;}
+  .lb-row td{background:rgba(22,34,64,.6);padding:11px 13px;border:1px solid rgba(201,168,76,.08);}
+  .lb-row td:first-child{border-radius:9px 0 0 9px;}
+  .lb-row td:last-child{border-radius:0 9px 9px 0;text-align:right;}
+  .lb-rank{font-family:'DM Serif Display',serif;font-size:1.2rem;color:var(--gray-dark);width:30px;}
+  .lb-rank.gold{color:#C9A84C;}
+  .lb-rank.silver{color:#9EB0C7;}
+  .lb-rank.bronze{color:#A0724A;}
+  .lb-team-name{font-size:14px;font-weight:700;}
+  .lb-round-scores{display:flex;gap:3px;flex-wrap:wrap;}
+  .round-pip{font-family:'DM Mono',monospace;font-size:10px;padding:2px 5px;border-radius:4px;background:rgba(45,74,107,.5);color:var(--gray-mid);}
+  .round-pip.scored{background:rgba(42,122,75,.2);color:var(--green-light);}
+  .lb-total{font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--gold-light);}
+  .lb-controls{display:flex;gap:10px;margin-top:1.5rem;width:100%;max-width:620px;}
+  .btn-secondary{flex:1;padding:12px;background:transparent;color:var(--gold);font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;border:1px solid rgba(201,168,76,.3);border-radius:10px;cursor:pointer;transition:.2s;}
+  .btn-secondary:hover{background:rgba(201,168,76,.08);}
+  .waiting-for-next{font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-mid);margin-top:1rem;display:none;}
+
+  /* FINAL */
+  #final-screen{justify-content:center;padding:2rem 1rem;background:radial-gradient(ellipse at 50% 0%,#1a3050 0%,var(--navy) 60%);}
+  .trophy-area{text-align:center;margin-bottom:1.5rem;}
+  .trophy-icon{font-size:3.5rem;margin-bottom:.4rem;}
+  .winner-title{font-family:'DM Serif Display',serif;font-size:.9rem;color:var(--gold);letter-spacing:3px;text-transform:uppercase;opacity:.8;}
+  .winner-name{font-family:'DM Serif Display',serif;font-size:2.8rem;color:var(--gold-light);letter-spacing:-1px;}
+  .winner-score{font-family:'DM Mono',monospace;font-size:13px;color:var(--gray-mid);margin-top:.2rem;}
+
+  /* LOADING */
+  #loading-screen{justify-content:center;align-items:center;padding:2rem;}
+  .loading-inner{text-align:center;}
+  .loading-title{font-family:'DM Serif Display',serif;font-size:2rem;color:var(--gold-light);margin-bottom:1rem;}
+  .loading-msg{font-size:13px;color:var(--gray-mid);}
+
+  @media(max-width:400px){
+    :root{--tile-size:46px;}
+    .key{height:44px;min-width:28px;font-size:12px;}
+    .key.wide{min-width:46px;}
+    .progress-grid{grid-template-columns:repeat(3,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen" class="screen active">
+  <div class="loading-inner">
+    <div class="loading-title">Fin<span style="color:var(--white)">Wordle</span></div>
+    <div class="lobby-dots" style="justify-content:center;display:flex;gap:8px;margin-top:1.5rem;">
+      <div class="lobby-dot"></div><div class="lobby-dot"></div><div class="lobby-dot"></div>
+    </div>
+    <div class="loading-msg" id="loading-msg" style="margin-top:1rem;">Connecting…</div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="setup-screen" class="screen">
+  <div class="logo-area">
+    <div class="logo-tag">5 Rounds · 11 Teams · Simultaneous</div>
+    <div class="logo-title">Fin<span>Wordle</span></div>
+    <div class="logo-sub">Finance Word Challenge</div>
+  </div>
+  <div class="setup-card">
+    <div class="sec-label">Team Names</div>
+    <div class="team-grid" id="team-inputs"></div>
+    <div class="divider"></div>
+    <div class="info-box">
+      <strong>How it works:</strong> All 11 teams play simultaneously on their own devices. Share this page URL with each team. The admin starts each round from the Admin Panel.
+    </div>
+    <div class="divider"></div>
+    <div class="sec-label">Scoring</div>
+    <div class="scoring-info">
+      <strong>Guesses:</strong> 1=100, 2=85, 3=70, 4=55, 5=40, 6=25 pts<br>
+      <strong>Time bonus:</strong> Up to +50 pts (scales over 120 s)<br>
+      <strong>Did not solve:</strong> 0 points
+    </div>
+    <button class="btn-primary" onclick="startGame()">Start Competition →</button>
+  </div>
+</div>
+
+<!-- PLAYER SELECT -->
+<div id="player-select-screen" class="screen">
+  <div class="ps-card">
+    <div class="ps-round-badge" id="ps-round-badge">Round 1 of 5</div>
+    <div class="ps-title">Select Your Team</div>
+    <div class="ps-subtitle">Tap your team name to start playing</div>
+    <div class="team-buttons" id="team-buttons"></div>
+    <p style="font-size:12px;color:var(--gray-mid);line-height:1.6;">Each team opens this page on their own device and selects their team name. Wait for the admin to start the round.</p>
+  </div>
+</div>
+
+<!-- WAITING LOBBY (selected team, waiting for round start) -->
+<div id="lobby-screen" class="screen">
+  <div class="lobby-card">
+    <div class="ps-round-badge" id="lobby-round-badge">Round 1 of 5</div>
+    <div class="lobby-title">Ready to Play</div>
+    <div class="lobby-team-name" id="lobby-team-name">Team 1</div>
+    <div class="lobby-sub">Waiting for the admin to start the round…</div>
+    <div class="lobby-dots">
+      <div class="lobby-dot"></div><div class="lobby-dot"></div><div class="lobby-dot"></div>
+    </div>
+    <div class="lobby-status" id="lobby-status">0 / 11 teams ready</div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen">
+  <div class="game-header">
+    <div class="header-top">
+      <div class="round-badge" id="round-label">Round 1 of 5</div>
+      <div class="timer-display" id="timer-display">0:00</div>
+    </div>
+    <div class="team-bar">
+      <div class="team-indicator"></div>
+      <div class="team-name-display" id="current-team-name">Team 1</div>
+      <div class="score-chip" id="current-team-score">0 pts</div>
+    </div>
+    <div class="header-divider"></div>
+  </div>
+  <div class="clue-area">
+    <div class="clue-label">Clue</div>
+    <div class="clue-text" id="clue-text">—</div>
+  </div>
+  <div class="grid-wrapper"><div class="grid" id="game-grid"></div></div>
+  <div class="message-bar" id="message-bar"></div>
+  <div class="keyboard" id="keyboard"></div>
+</div>
+
+<!-- WAITING FOR OTHERS -->
+<div id="waiting-screen" class="screen">
+  <div class="waiting-card">
+    <div class="round-badge" style="display:inline-block;margin-bottom:1rem;" id="waiting-round-badge">Round 1 of 5</div>
+    <div class="waiting-title">Round Done!</div>
+    <div class="waiting-sub">The word was</div>
+    <div class="waiting-word-reveal" id="waiting-word"></div>
+    <div class="waiting-def" id="waiting-def"></div>
+    <div class="score-reveal" style="margin-bottom:1.5rem;">
+      <div class="score-reveal-title">Your Score</div>
+      <div class="score-big" id="waiting-score">0<span>pts</span></div>
+      <div class="score-breakdown" id="waiting-breakdown"></div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gray-mid);margin-bottom:1rem;">Teams finished</div>
+    <div class="progress-grid" id="waiting-progress-grid"></div>
+    <div class="lobby-dots" id="waiting-dots">
+      <div class="lobby-dot"></div><div class="lobby-dot"></div><div class="lobby-dot"></div>
+    </div>
+    <div class="lobby-status" id="waiting-count">Waiting for others…</div>
+  </div>
+</div>
+
+<!-- RESULT (all teams done) -->
+<div id="result-screen" class="screen">
+  <div class="result-card">
+    <div class="round-badge" style="margin:0 auto 1rem;" id="result-round-label">Round 1</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-mid);">The word was</div>
+    <div class="result-word" id="result-word">YIELD</div>
+    <div class="result-definition" id="result-definition">The income return on an investment.</div>
+    <div class="score-reveal">
+      <div class="score-reveal-title">Round Scores</div>
+      <div id="result-scores-list"></div>
+    </div>
+    <div class="waiting-for-next" id="waiting-for-next">Waiting for admin to start next round…</div>
+    <button class="btn-primary" id="result-btn" onclick="proceedFromResult()" style="display:none;">View Leaderboard →</button>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="leaderboard-screen" class="screen">
+  <div class="lb-header">
+    <div class="lb-title" id="lb-title">After Round 1</div>
+    <div class="lb-subtitle">Leaderboard</div>
+  </div>
+  <table class="lb-table">
+    <thead><tr><th></th><th>Team</th><th>Rounds</th><th>Total</th></tr></thead>
+    <tbody id="lb-body"></tbody>
+  </table>
+  <div class="lb-controls">
+    <div class="waiting-for-next" id="lb-waiting-msg" style="display:block;text-align:center;margin:0 auto;">Waiting for admin to start the next round…</div>
+  </div>
+</div>
+
+<!-- FINAL -->
+<div id="final-screen" class="screen">
+  <div class="trophy-area">
+    <div class="trophy-icon">🏆</div>
+    <div class="winner-title">Champion</div>
+    <div class="winner-name" id="final-winner-name">Team</div>
+    <div class="winner-score" id="final-winner-score">0 pts</div>
+  </div>
+  <table class="lb-table">
+    <thead><tr><th></th><th>Team</th><th>Rounds</th><th>Total</th></tr></thead>
+    <tbody id="final-lb-body"></tbody>
+  </table>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  FIXED WORD BANK
+// ═══════════════════════════════════════════
+const WORD_BANK = [
+  {word:"DERIVE", clue:"Financial instruments whose value comes from an underlying asset."},
+  {word:"DILUTE", clue:"Reduction in ownership percentage due to new shares."},
+  {word:"OFFSET", clue:"To counterbalance or cancel out a financial position."},
+  {word:"HURDLE", clue:"Minimum rate of return required before profits are shared."},
+  {word:"ESCROW", clue:"Money held by a third party until conditions are met."}
+];
+const NUM_ROUNDS = 5;
+const NUM_TEAMS = 11;
+
+// ═══════════════════════════════════════════
+//  VALID GUESSES (all standard English words, 5-6 letters)
+// ═══════════════════════════════════════════
+const VALID_GUESSES = new Set([
+  // 6-letter words relevant/common
+  "DERIVE","DILUTE","OFFSET","HURDLE","ESCROW",
+  "ABROAD","ACCEPT","ACCESS","ACCORD","ACCRUE","ACCUSE","ACROSS","ACTING","ACTION","ACTIVE",
+  "ACTUAL","ADJUST","AFFORD","AGENCY","AGREED","ALMOST","AMOUNT","ANNUAL","ANSWER","APPEAL",
+  "APPEND","APPEND","ARRIVE","ASPECT","ASSESS","ATTACH","ATTACK","ATTEND","AUTHOR","BACKED",
+  "BUDGET","BUYING","CALLED","CANCEL","CANNOT","CAREER","CASHEW","CAUSAL","CHARGE","CHOICE",
+  "CHOSEN","CIRCLE","CLIENT","CLOSED","CODING","COLUMN","COMMIT","COMMON","COMPLY","CONTRA",
+  "COURSE","CREATE","CREDIT","CUSTOM","DEBATE","DECIDE","DEFEND","DEFINE","DEMAND","DEPLOY",
+  "DESIGN","DETAIL","DIRECT","DOUBLE","DRIVEN","ENABLE","EQUITY","ESTATE","EXPAND","EXPORT",
+  "FACTOR","FAIRLY","FENDER","FILING","FILTER","FISCAL","FOLLOW","FORMAL","FREEZE","FUTURE",
+  "GLOBAL","GROWTH","HANDLE","IMPACT","IMPORT","INCOME","INSIDE","INVEST","ISSUED","LEADER",
+  "LENDER","LINKED","LIQUID","LISTED","LONGER","LOSING","MANAGE","MARGIN","MARKET","MASTER",
+  "MATTER","MEMBER","METHOD","MIRROR","MODERN","MONTHS","MOVING","MUTUAL","NARROW","NATIVE",
+  "NATURE","NEEDED","NORMAL","NOTICE","NUMBER","OBJECT","OBTAIN","OPENED","OPTION","ORDERS",
+  "ORIGIN","OUTPUT","PERIOD","PERMIT","POLICY","PORTAL","PREFER","PROFIT","PROPER","PROVEN",
+  "PUBLIC","RAISED","RATING","REASON","RECALL","REDUCE","REFERS","REFORM","REGARD","REMAIN",
+  "REMOVE","RENDER","RENTAL","REPORT","RETURN","REVIEW","REWARD","RISING","SECURE","SELECT",
+  "SELLER","SERIES","SETTLE","SHARES","SIGNAL","SIGNED","SIMPLE","SINGLE","SOURCE","SPREAD",
+  "STABLE","STATED","STATUS","STOCKS","STORED","STREAM","STRICT","STRONG","STRUCK","SUBMIT",
+  "SUPPLY","SYSTEM","TARGET","TENDER","TESTED","TIMING","TRADED","TRADER","TRIPLE","TURNED",
+  "UNIQUE","UPDATE","UPSIDE","USEFUL","VENDOR","VERIFY","VIABLE","VOLUME","WEALTH","WITHIN",
+  "WORKER","YEARLY","YIELDS",
+  // 5-letter words
+  "ABOUT","ABOVE","ABUSE","ACTOR","ACUTE","ADMIT","ADOPT","ADULT","AFTER","AGAIN",
+  "AGENT","AGREE","AHEAD","ALARM","ALBUM","ALERT","ALIKE","ALIGN","ALIVE","ALONE",
+  "ALONG","ALPHA","ALTER","AMEND","AMONG","AMPLE","ANGEL","ANGLE","ANGRY","ANNEX",
+  "APPLY","ARENA","ARGUE","ARISE","ARMOR","ARRAY","ARROW","ASSET","ATONE","AUDIT",
+  "AVAIL","AVERT","AVOID","AWARE","AWFUL","AZURE","BADGE","BASIC","BASIS","BATCH",
+  "BEACH","BEARS","BEGIN","BEING","BELOW","BENCH","BILLS","BIRTH","BLACK","BLADE",
+  "BLAME","BLAND","BLANK","BLAST","BLAZE","BLEAK","BLEND","BLESS","BLIND","BLOCK",
+  "BLOOD","BLOWN","BOARD","BONDS","BONUS","BOOST","BOUND","BRAIN","BRAND","BRAVE",
+  "BREAK","BREED","BRICK","BRIEF","BRING","BROAD","BROKE","BROWN","BUILD","BULLS",
+  "BURST","BUYER","CALLS","CARGO","CARRY","CAUSE","CHAIN","CHAIR","CHAOS","CHART",
+  "CHASE","CHEAP","CHECK","CHILD","CLAIM","CLASH","CLASS","CLEAN","CLEAR","CLIMB",
+  "CLOSE","CLOUD","COACH","COLOR","COURT","COVER","CRAFT","CRASH","CRAZY","CRIME",
+  "CROSS","CROWD","CRUEL","CURVE","CYCLE","DAILY","DANCE","DEBIT","DEBUT","DECAY",
+  "DELTA","DEPTH","DIRTY","DOUBT","DRAFT","DRAIN","DRAWN","DRINK","DRIVE","DRONE",
+  "EARLY","EARTH","EIGHT","ELITE","EMPTY","ENJOY","ENTER","EQUAL","ERROR","ETHIC",
+  "EVERY","EXACT","EXTRA","FAINT","FAITH","FALSE","FANCY","FATAL","FAULT","FEAST",
+  "FIELD","FIFTH","FIGHT","FINAL","FIRST","FIXED","FLAME","FLASH","FLEET","FLESH",
+  "FLOAT","FLOOD","FLOOR","FOCUS","FORCE","FORGE","FORTH","FORTY","FOUND","FRAME",
+  "FRANK","FRAUD","FRESH","FRONT","FULLY","GAINS","GHOST","GIVEN","GLASS","GLOBE",
+  "GLORY","GRACE","GRADE","GRAIN","GRAND","GRANT","GRAPH","GRASP","GRAVE","GREAT",
+  "GREEN","GREED","GRIND","GROAN","GROSS","GROUP","GROWN","GUARD","GUIDE","GUILT",
+  "HEADS","HEART","HEAVY","HEDGE","HENCE","HUMAN","HURRY","IDEAL","IMAGE","INDEX",
+  "INNER","INPUT","ISSUE","JAPAN","JOINT","KNIFE","KNOWN","LARGE","LASER","LATER",
+  "LAYER","LEARN","LEAST","LEAVE","LEGAL","LEVEL","LIGHT","LIMIT","LOCAL","LOGIC",
+  "LONGS","LOOSE","LOWER","LOYAL","LUCKY","MACRO","MAGIC","MAJOR","MAKER","MARCH",
+  "MARRY","MATCH","MAYOR","MEDIA","MERGE","METAL","MIGHT","MINOR","MIXED","MODEL",
+  "MONEY","MONTH","MORAL","MOUNT","MOUTH","MOVIE","MUSIC","NEEDS","NEVER","NOISE",
+  "NORTH","NOTED","NOVEL","NURSE","OCCUR","OFFER","OFTEN","ONSET","ORDER","OUTER",
+  "OWNED","OWNER","PAINT","PANEL","PAPER","PARTY","PATCH","PEACE","PENNY","PHASE",
+  "PHONE","PILOT","PLACE","PLAIN","PLANE","PLANT","PLATE","POINT","POWER","PRESS",
+  "PRICE","PRIDE","PRIME","PRINT","PRIOR","PROBE","PROOF","PROSE","PROUD","PROVE",
+  "QUEEN","QUERY","QUEST","QUICK","QUIET","QUOTA","QUOTE","RADAR","RADIO","RAISE",
+  "RANGE","RAPID","RATIO","REACH","READY","REALM","REBEL","REFER","REIGN","RELAX",
+  "RENEW","REPAY","REPOS","RIDER","RIGHT","RIGID","RISKY","RIVAL","RIVER","ROUGH",
+  "ROUND","ROUTE","ROYAL","RURAL","SAUCE","SCALE","SCENE","SCORE","SENSE","SEVEN",
+  "SHAPE","SHARE","SHARP","SHELF","SHIFT","SHORT","SINCE","SIXTH","SKILL","SLATE",
+  "SLEEP","SLICE","SLIDE","SLOPE","SMALL","SMART","SMILE","SMOKE","SOLID","SOLVE",
+  "SORRY","SOUND","SOUTH","SPACE","SPARE","SPARK","SPEAK","SPEND","SPLIT","SPORT",
+  "STAGE","STAND","STARK","START","STATE","STEAM","STEEL","STEEP","STICK","STILL",
+  "STOCK","STONE","STORE","STORM","STORY","STRIP","STUCK","STUDY","STYLE","SUGAR",
+  "SUPER","SURGE","SWAPS","SWEAR","SWEEP","SWEET","SWING","TABLE","TAKEN","TAXES",
+  "TENSE","TERMS","THICK","THING","THINK","THIRD","THOSE","THREE","THROW","TIGHT",
+  "TIRED","TITLE","TODAY","TOKEN","TOTAL","TOUCH","TOUGH","TOXIC","TRACK","TRADE",
+  "TRAIL","TRAIN","TRAIT","TREAT","TREND","TRIAL","TRICK","TRIED","TRUCK","TRULY",
+  "TRUST","TRUTH","TWICE","TWIST","ULTRA","UNDER","UNION","UNITE","UNTIL","UPPER",
+  "USAGE","USING","USUAL","VALID","VALUE","VALVE","VERSE","VIDEO","VIRAL","VIRUS",
+  "VISIT","VITAL","VIVID","VOICE","VOTER","WASTE","WATCH","WATER","WEIRD","WHERE",
+  "WHICH","WHILE","WHOLE","WIDER","WOMEN","WORLD","WORSE","WORST","WORTH","WOULD",
+  "WOUND","WROTE","YEARS","YIELD","YOUNG","YOUTH","ZONES","DRAFT","FLOAT","DEBIT",
+  "ASSET","HEDGE","ALPHA","BONDS","DELTA","BEARS","BULLS","CALLS","REPOS","SWAPS",
+  "MACRO","LIMIT","SHORT","PRIME","NOISE","RATIO","AMEND","LONGS","FLOOR","GROSS"
+]);
+
+// ═══════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════
+let teams = [];
+let teamScores = []; // [teamIdx][roundIdx] = score
+let currentRound = 0;
+let myTeamIdx = -1;
+let myTeamName = '';
+let currentWord = '', currentWordLen = 0;
+let currentGuesses = [], currentRow = 0, currentInput = '', gameActive = false;
+let timerInterval = null, startTime = 0, elapsedSeconds = 0;
+let gameSessionId = 'session1'; // hardcoded — admin resets via Firebase
+let unsubRound = null;
+
+// Firebase references (set after ready)
+let db, fbRef, fbSet, fbGet, fbOnValue, fbUpdate, fbRemove;
+
+// ═══════════════════════════════════════════
+//  SETUP TEAM INPUTS
+// ═══════════════════════════════════════════
+(function(){
+  const g = document.getElementById('team-inputs');
+  for(let i = 0; i < NUM_TEAMS; i++){
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.className = 'team-input';
+    inp.placeholder = `Team ${i+1}`; inp.maxLength = 20; inp.id = `ti-${i}`;
+    g.appendChild(inp);
+  }
+})();
+
+// ═══════════════════════════════════════════
+//  FIREBASE INIT
+// ═══════════════════════════════════════════
+document.addEventListener('firebaseReady', () => {
+  db = window._db;
+  fbRef = window._ref; fbSet = window._set; fbGet = window._get;
+  fbOnValue = window._onValue; fbUpdate = window._update; fbRemove = window._remove;
+
+  // Check if a session already exists
+  checkExistingSession();
+});
+
+async function checkExistingSession() {
+  document.getElementById('loading-msg').textContent = 'Checking game state…';
+  try {
+    const snap = await fbGet(fbRef(db, `sessions/${gameSessionId}/state`));
+    if(snap.exists()){
+      const state = snap.val();
+      if(state === 'setup' || state === 'team-select'){
+        // Load teams from Firebase and show team select
+        const tSnap = await fbGet(fbRef(db, `sessions/${gameSessionId}/teams`));
+        if(tSnap.exists()){
+          teams = tSnap.val();
+          teamScores = teams.map(() => Array(NUM_ROUNDS).fill(null));
+          const rSnap = await fbGet(fbRef(db, `sessions/${gameSessionId}/currentRound`));
+          currentRound = rSnap.exists() ? rSnap.val() : 0;
+          showScreen('player-select-screen');
+          renderTeamButtons();
+          return;
+        }
+      }
+    }
+    showScreen('setup-screen');
+  } catch(e) {
+    console.error(e);
+    showScreen('setup-screen');
+  }
+}
+
+// ═══════════════════════════════════════════
+//  START GAME (host/first device sets up)
+// ═══════════════════════════════════════════
+async function startGame() {
+  teams = [];
+  for(let i = 0; i < NUM_TEAMS; i++){
+    const v = document.getElementById(`ti-${i}`).value.trim();
+    teams.push(v || `Team ${i+1}`);
+  }
+  teamScores = teams.map(() => Array(NUM_ROUNDS).fill(null));
+  currentRound = 0;
+
+  // Write session to Firebase
+  await fbSet(fbRef(db, `sessions/${gameSessionId}`), {
+    teams: teams,
+    state: 'team-select',
+    currentRound: 0,
+    roundState: 'waiting', // 'waiting' | 'active' | 'done'
+    scores: teams.map(() => Array(NUM_ROUNDS).fill(null)),
+    roundSubmissions: {}
+  });
+
+  showScreen('player-select-screen');
+  renderTeamButtons();
+  listenForRoundStart();
+}
+
+// ═══════════════════════════════════════════
+//  TEAM SELECTION
+// ═══════════════════════════════════════════
+function renderTeamButtons() {
+  const container = document.getElementById('team-buttons');
+  container.innerHTML = '';
+  document.getElementById('ps-round-badge').textContent = `Round ${currentRound+1} of ${NUM_ROUNDS}`;
+  teams.forEach((name, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'team-select-btn';
+    btn.textContent = name;
+    btn.onclick = () => selectTeam(idx);
+    btn.id = `tsb-${idx}`;
+    container.appendChild(btn);
+  });
+}
+
+async function selectTeam(idx) {
+  myTeamIdx = idx;
+  myTeamName = teams[idx];
+  // Mark team as selected in Firebase
+  await fbUpdate(fbRef(db, `sessions/${gameSessionId}/teamReady`), {[idx]: true});
+  // Update scores from Firebase
+  await syncScores();
+  showLobby();
+}
+
+async function syncScores() {
+  const snap = await fbGet(fbRef(db, `sessions/${gameSessionId}/scores`));
+  if(snap.exists()){
+    const s = snap.val();
+    // s is array of arrays
+    teamScores = teams.map((_, ti) => {
+      const tr = s[ti];
+      return Array(NUM_ROUNDS).fill(null).map((_, ri) => (tr && tr[ri] !== undefined) ? tr[ri] : null);
+    });
+  }
+}
+
+function showLobby() {
+  document.getElementById('lobby-round-badge').textContent = `Round ${currentRound+1} of ${NUM_ROUNDS}`;
+  document.getElementById('lobby-team-name').textContent = myTeamName;
+  showScreen('lobby-screen');
+  listenForRoundStart();
+  updateLobbyCount();
+}
+
+async function updateLobbyCount() {
+  try {
+    const snap = await fbGet(fbRef(db, `sessions/${gameSessionId}/teamReady`));
+    const ready = snap.exists() ? Object.keys(snap.val()).length : 0;
+    document.getElementById('lobby-status').textContent = `${ready} / ${NUM_TEAMS} teams ready`;
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════════
+//  LISTEN FOR ROUND START (called by admin)
+// ═══════════════════════════════════════════
+function listenForRoundStart() {
+  if(unsubRound) unsubRound();
+  unsubRound = fbOnValue(fbRef(db, `sessions/${gameSessionId}`), (snap) => {
+    if(!snap.exists()) return;
+    const data = snap.val();
+
+    // Update lobby count if on lobby screen
+    if(document.getElementById('lobby-screen').classList.contains('active')){
+      const ready = data.teamReady ? Object.keys(data.teamReady).length : 0;
+      document.getElementById('lobby-status').textContent = `${ready} / ${NUM_TEAMS} teams ready`;
+    }
+
+    const currentScreen = document.querySelector('.screen.active')?.id;
+    const roundState = data.roundState;
+    const fbRound = data.currentRound ?? 0;
+
+    if(roundState === 'active' && (currentScreen === 'lobby-screen' || currentScreen === 'player-select-screen')){
+      // Admin started the round
+      currentRound = fbRound;
+      // Sync scores
+      if(data.scores){
+        const s = data.scores;
+        teamScores = teams.map((_, ti) => {
+          const tr = s[ti];
+          return Array(NUM_ROUNDS).fill(null).map((_, ri) => (tr && tr[ri] !== undefined) ? tr[ri] : null);
+        });
+      }
+      startPlayingRound();
+    }
+
+    if(roundState === 'results' && currentScreen === 'waiting-screen'){
+      // All done — show round results
+      showRoundResult(data);
+    }
+
+    if(roundState === 'leaderboard' && (currentScreen === 'result-screen')){
+      showLeaderboard();
+    }
+
+    if(roundState === 'active' && currentScreen === 'leaderboard-screen'){
+      // Next round started
+      currentRound = fbRound;
+      if(data.scores){
+        const s = data.scores;
+        teamScores = teams.map((_, ti) => {
+          const tr = s[ti];
+          return Array(NUM_ROUNDS).fill(null).map((_, ri) => (tr && tr[ri] !== undefined) ? tr[ri] : null);
+        });
+      }
+      showScreen('lobby-screen');
+      document.getElementById('lobby-round-badge').textContent = `Round ${currentRound+1} of ${NUM_ROUNDS}`;
+      document.getElementById('lobby-team-name').textContent = myTeamName;
+    }
+
+    if(roundState === 'final'){
+      if(data.scores){
+        const s = data.scores;
+        teamScores = teams.map((_, ti) => {
+          const tr = s[ti];
+          return Array(NUM_ROUNDS).fill(null).map((_, ri) => (tr && tr[ri] !== undefined) ? tr[ri] : null);
+        });
+      }
+      showFinal();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════
+//  START PLAYING THE ROUND
+// ═══════════════════════════════════════════
+function startPlayingRound() {
+  const wordObj = WORD_BANK[currentRound];
+  currentWord = wordObj.word.toUpperCase();
+  currentWordLen = currentWord.length;
+  currentGuesses = [];
+  currentRow = 0;
+  currentInput = '';
+  gameActive = true;
+
+  // Update UI
+  document.getElementById('round-label').textContent = `Round ${currentRound+1} of ${NUM_ROUNDS}`;
+  document.getElementById('current-team-name').textContent = myTeamName;
+  const total = teamScores[myTeamIdx].reduce((a,b) => b !== null ? a+b : a, 0);
+  document.getElementById('current-team-score').textContent = `${total} pts`;
+  document.getElementById('clue-text').textContent = wordObj.clue;
+
+  buildGrid();
+  buildKeyboard();
+  showScreen('game-screen');
+
+  startTime = Date.now();
+  elapsedSeconds = 0;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimer, 500);
+}
+
+// ═══════════════════════════════════════════
+//  GRID & KEYBOARD
+// ═══════════════════════════════════════════
+function buildGrid() {
+  const grid = document.getElementById('game-grid');
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${currentWordLen}, var(--tile-size))`;
+  for(let r = 0; r < 6; r++){
+    for(let c = 0; c < currentWordLen; c++){
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.id = `tile-${r}-${c}`;
+      grid.appendChild(tile);
+    }
+  }
+}
+
+function buildKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  const rows = [['Q','W','E','R','T','Y','U','I','O','P'],['A','S','D','F','G','H','J','K','L'],['ENTER','Z','X','C','V','B','N','M','⌫']];
+  rows.forEach(row => {
+    const div = document.createElement('div'); div.className = 'kb-row';
+    row.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'key' + (k.length > 1 ? ' wide' : '');
+      btn.textContent = k; btn.dataset.key = k;
+      btn.onclick = () => handleKey(k);
+      div.appendChild(btn);
+    });
+    kb.appendChild(div);
+  });
+}
+
+document.addEventListener('keydown', e => {
+  if(!gameActive) return;
+  if(e.key === 'Enter') handleKey('ENTER');
+  else if(e.key === 'Backspace') handleKey('⌫');
+  else if(/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+});
+
+function handleKey(k){
+  if(!gameActive) return;
+  clearMessage();
+  if(k === '⌫'){
+    if(currentInput.length > 0){ currentInput = currentInput.slice(0,-1); renderInput(); }
+    return;
+  }
+  if(k === 'ENTER'){
+    submitGuess(); return;
+  }
+  if(currentInput.length < currentWordLen){
+    currentInput += k;
+    renderInput();
+    const tile = document.getElementById(`tile-${currentRow}-${currentInput.length-1}`);
+    if(tile){ tile.classList.remove('pop'); void tile.offsetWidth; tile.classList.add('pop'); }
+  }
+}
+
+function renderInput(){
+  for(let c = 0; c < currentWordLen; c++){
+    const tile = document.getElementById(`tile-${currentRow}-${c}`);
+    if(!tile) continue;
+    tile.textContent = currentInput[c] || '';
+    tile.className = 'tile' + (currentInput[c] ? ' filled' : '');
+  }
+}
+
+function submitGuess(){
+  if(currentInput.length !== currentWordLen){ showMsg('Not enough letters','error'); return; }
+  if(!VALID_GUESSES.has(currentInput) && currentInput !== currentWord){ showMsg('Not in word list','error'); shakeTiles(); return; }
+  const result = scoreGuess(currentInput, currentWord);
+  flipTiles(currentRow, result, () => {
+    currentGuesses.push({guess: currentInput, result});
+    updateKeyboard(currentInput, result);
+    const solved = result.every(r => r === 'correct');
+    currentRow++;
+    if(solved){
+      gameActive = false;
+      clearInterval(timerInterval);
+      const guessCount = currentGuesses.length;
+      const score = calcScore(guessCount, elapsedSeconds);
+      bounceTiles(currentRow-1);
+      setTimeout(() => { showMsg('Excellent! 🎉', 'success'); }, 300);
+      setTimeout(() => { submitScore(score, guessCount, true); }, 1200);
+    } else if(currentRow === 6){
+      gameActive = false;
+      clearInterval(timerInterval);
+      setTimeout(() => { showMsg(currentWord, 'error'); }, 200);
+      setTimeout(() => { submitScore(0, 6, false); }, 1200);
+    } else {
+      currentInput = '';
+    }
+  });
+}
+
+function scoreGuess(guess, word){
+  const result = Array(word.length).fill('absent');
+  const wArr = word.split(''), gArr = guess.split('');
+  const wCount = {};
+  wArr.forEach(l => wCount[l] = (wCount[l]||0)+1);
+  // First pass: correct
+  gArr.forEach((l,i) => { if(l===wArr[i]){ result[i]='correct'; wCount[l]--; } });
+  // Second pass: present
+  gArr.forEach((l,i) => { if(result[i]==='correct') return; if(wCount[l]>0){ result[i]='present'; wCount[l]--; } });
+  return result;
+}
+
+function flipTiles(row, result, cb){
+  for(let c = 0; c < currentWordLen; c++){
+    const tile = document.getElementById(`tile-${row}-${c}`);
+    if(!tile) continue;
+    setTimeout(() => {
+      tile.classList.add('flip');
+      setTimeout(() => { tile.className = 'tile flip '+result[c]; tile.textContent = currentInput[c]; }, 250);
+    }, c * 120);
+  }
+  setTimeout(cb, currentWordLen * 120 + 350);
+}
+
+function bounceTiles(row){
+  for(let c = 0; c < currentWordLen; c++){
+    const tile = document.getElementById(`tile-${row}-${c}`);
+    if(tile){ setTimeout(() => { tile.classList.add('bounce'); setTimeout(() => tile.classList.remove('bounce'), 500); }, c*80); }
+  }
+}
+
+function shakeTiles(){
+  for(let c = 0; c < currentWordLen; c++){
+    const tile = document.getElementById(`tile-${currentRow}-${c}`);
+    if(tile){ tile.classList.add('shake'); setTimeout(() => tile.classList.remove('shake'), 600); }
+  }
+}
+
+function updateKeyboard(guess, result){
+  const priority = {correct:3, present:2, absent:1};
+  guess.split('').forEach((l,i) => {
+    const btn = document.querySelector(`.key[data-key="${l}"]`);
+    if(!btn) return;
+    const cur = priority[btn.className.match(/correct|present|absent/)?.[0]] || 0;
+    if(priority[result[i]] > cur){ btn.className = btn.className.replace(/\s*(correct|present|absent)/,'') + ' ' + result[i]; }
+  });
+}
+
+// ═══════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════
+function updateTimer(){
+  elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+  const m = Math.floor(elapsedSeconds / 60), s = elapsedSeconds % 60;
+  const el = document.getElementById('timer-display');
+  el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  el.className = 'timer-display' + (elapsedSeconds >= 100 ? ' danger' : elapsedSeconds >= 70 ? ' warning' : '');
+}
+
+// ═══════════════════════════════════════════
+//  SCORING
+// ═══════════════════════════════════════════
+function calcScore(guesses, seconds){
+  const pts = [100,85,70,55,40,25];
+  const base = pts[guesses-1] || 0;
+  const bonus = Math.round(50 * Math.max(0, 1 - seconds/120));
+  return base + bonus;
+}
+
+// ═══════════════════════════════════════════
+//  SUBMIT SCORE TO FIREBASE
+// ═══════════════════════════════════════════
+async function submitScore(score, guesses, solved) {
+  teamScores[myTeamIdx][currentRound] = score;
+  // Write this team's round submission
+  await fbUpdate(fbRef(db, `sessions/${gameSessionId}/roundSubmissions`), {
+    [myTeamIdx]: { score, guesses, solved, done: true }
+  });
+  // Write score to scores array
+  await fbUpdate(fbRef(db, `sessions/${gameSessionId}/scores/${myTeamIdx}`), {
+    [currentRound]: score
+  });
+  // Show waiting screen
+  showWaitingScreen(score, guesses, solved);
+  // Listen for all teams done
+  listenForAllDone();
+}
+
+function showWaitingScreen(score, guesses, solved) {
+  const wordObj = WORD_BANK[currentRound];
+  document.getElementById('waiting-round-badge').textContent = `Round ${currentRound+1} of ${NUM_ROUNDS}`;
+  document.getElementById('waiting-word').textContent = wordObj.word;
+  document.getElementById('waiting-def').textContent = wordObj.clue;
+  const pts = [100,85,70,55,40,25];
+  const base = solved ? (pts[guesses-1]||0) : 0;
+  const bonus = score - base;
+  document.getElementById('waiting-score').innerHTML = `${score}<span>pts</span>`;
+  document.getElementById('waiting-breakdown').textContent = solved ? `${base} (${guesses} guess${guesses>1?'es':''}) + ${bonus} (time bonus)` : 'Not solved — 0 points';
+  renderWaitingProgress({});
+  showScreen('waiting-screen');
+}
+
+function listenForAllDone() {
+  fbOnValue(fbRef(db, `sessions/${gameSessionId}/roundSubmissions`), (snap) => {
+    if(!snap.exists()) return;
+    const subs = snap.val();
+    renderWaitingProgress(subs);
+    const doneCount = Object.values(subs).filter(s => s.done).length;
+    document.getElementById('waiting-count').textContent = `${doneCount} / ${NUM_TEAMS} teams done`;
+  });
+}
+
+function renderWaitingProgress(subs) {
+  const grid = document.getElementById('waiting-progress-grid');
+  grid.innerHTML = '';
+  teams.forEach((name, idx) => {
+    const sub = subs[idx];
+    const div = document.createElement('div');
+    div.className = 'tpc' + (sub?.done ? ' finished' : ' playing');
+    div.innerHTML = `<div class="tpc-name">${name}</div><div class="tpc-status">${sub?.done ? '✓ Done' : '…'}</div>${sub?.done ? `<div class="tpc-score">${sub.score} pts</div>` : ''}`;
+    grid.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  ROUND RESULT (shown when admin triggers results)
+// ═══════════════════════════════════════════
+function showRoundResult(data) {
+  const wordObj = WORD_BANK[currentRound];
+  document.getElementById('result-round-label').textContent = `Round ${currentRound+1} — All Teams`;
+  document.getElementById('result-word').textContent = wordObj.word;
+  document.getElementById('result-definition').textContent = wordObj.clue;
+
+  const subs = data.roundSubmissions || {};
+  const sorted = teams.map((n,idx) => ({n, s: subs[idx]?.score || 0, idx})).sort((a,b) => b.s - a.s);
+  document.getElementById('result-scores-list').innerHTML = sorted.map((t,rank) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+      <span style="font-family:'DM Serif Display',serif;font-size:.95rem;color:${rank===0?'var(--gold)':'var(--gray-mid)'};width:20px;">${rank+1}</span>
+      <span style="flex:1;font-size:13px;font-weight:700;">${t.n}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:13px;color:${t.s>0?'var(--gold-light)':'var(--gray-mid)'};">${t.s} pts</span>
+    </div>`).join('');
+
+  document.getElementById('waiting-for-next').style.display = 'block';
+  document.getElementById('result-btn').style.display = 'none';
+  showScreen('result-screen');
+}
+
+function proceedFromResult() {
+  showLeaderboard();
+}
+
+// ═══════════════════════════════════════════
+//  LEADERBOARD
+// ═══════════════════════════════════════════
+function showLeaderboard() {
+  document.getElementById('lb-title').textContent = `After Round ${currentRound+1}`;
+  renderLb('lb-body', buildLb(), currentRound);
+  showScreen('leaderboard-screen');
+}
+
+function buildLb() {
+  return teams.map((name,idx) => {
+    const rs = teamScores[idx];
+    const total = rs.reduce((a,b) => b !== null ? a+b : a, 0);
+    return {name, idx, roundScores: rs, total};
+  }).sort((a,b) => b.total - a.total);
+}
+
+function renderLb(id, sorted, upTo) {
+  const tbody = document.getElementById(id); tbody.innerHTML = '';
+  const rc = ['gold','silver','bronze'];
+  sorted.forEach((team,rank) => {
+    const tr = document.createElement('tr'); tr.className = 'lb-row';
+    const pips = Array.from({length: NUM_ROUNDS}, (_,i) => {
+      if(i > upTo) return `<span class="round-pip">R${i+1}</span>`;
+      const s = team.roundScores[i];
+      return `<span class="round-pip${s!==null&&s>0?' scored':''}">${s!==null?s:'—'}</span>`;
+    }).join('');
+    tr.innerHTML = `
+      <td><div class="lb-rank ${rc[rank]||''}">${rank+1}</div></td>
+      <td><div class="lb-team-name">${team.name}</div></td>
+      <td><div class="lb-round-scores">${pips}</div></td>
+      <td><div class="lb-total">${team.total}</div></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  FINAL
+// ═══════════════════════════════════════════
+function showFinal() {
+  const sorted = buildLb(), w = sorted[0];
+  document.getElementById('final-winner-name').textContent = w.name;
+  document.getElementById('final-winner-score').textContent = `${w.total} pts across ${NUM_ROUNDS} rounds`;
+  renderLb('final-lb-body', sorted, NUM_ROUNDS-1);
+  showScreen('final-screen');
+}
+
+// ═══════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showMsg(msg, type) {
+  const el = document.getElementById('message-bar');
+  el.textContent = msg; el.className = 'message-bar ' + (type||'');
+}
+
+function clearMessage() {
+  const el = document.getElementById('message-bar');
+  el.textContent = ''; el.className = 'message-bar';
+}
+
+// Listen for round start when page is on player-select
+function listenForRoundStart() {
+  if(unsubRound) { unsubRound(); unsubRound = null; }
+  unsubRound = fbOnValue(fbRef(db, `sessions/${gameSessionId}`), (snap) => {
+    if(!snap.exists()) return;
+    const data = snap.val();
+    const currentScreen = document.querySelector('.screen.active')?.id;
+
+    if(data.teams) teams = data.teams;
+    if(data.currentRound !== undefined) currentRound = data.currentRound;
+
+    if(data.scores){
+      const s = data.scores;
+      teamScores = teams.map((_, ti) => {
+        const tr = s[ti];
+        return Array(NUM_ROUNDS).fill(null).map((_, ri) => (tr && tr[ri] !== undefined) ? tr[ri] : null);
+      });
+    }
+
+    // Lobby count
+    if(currentScreen === 'lobby-screen'){
+      const ready = data.teamReady ? Object.keys(data.teamReady).length : 0;
+      const ls = document.getElementById('lobby-status');
+      if(ls) ls.textContent = `${ready} / ${NUM_TEAMS} teams ready`;
+    }
+
+    if(data.roundState === 'active' && (currentScreen === 'lobby-screen' || currentScreen === 'player-select-screen')){
+      startPlayingRound();
+    }
+
+    if(data.roundState === 'results' && currentScreen === 'waiting-screen'){
+      showRoundResult(data);
+    }
+
+    if(data.roundState === 'leaderboard' && currentScreen === 'result-screen'){
+      showLeaderboard();
+    }
+
+    if(data.roundState === 'active' && currentScreen === 'leaderboard-screen'){
+      showScreen('lobby-screen');
+      document.getElementById('lobby-round-badge').textContent = `Round ${currentRound+1} of ${NUM_ROUNDS}`;
+      document.getElementById('lobby-team-name').textContent = myTeamName;
+    }
+
+    if(data.roundState === 'final'){
+      if(!['final-screen'].includes(currentScreen)) showFinal();
+    }
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinWordle — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ═══════════════════════════════════════
+  //  FIREBASE CONFIG — same as index.html
+  // ═══════════════════════════════════════
+  const firebaseConfig = {
+    apiKey: "REPLACE_WITH_YOUR_API_KEY",
+    authDomain: "REPLACE_WITH_YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://REPLACE_WITH_YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "REPLACE_WITH_YOUR_PROJECT",
+    storageBucket: "REPLACE_WITH_YOUR_PROJECT.appspot.com",
+    messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+    appId: "REPLACE_WITH_YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  window._db = db;
+  window._ref = ref;
+  window._set = set;
+  window._get = get;
+  window._onValue = onValue;
+  window._update = update;
+  window._remove = remove;
+  window._firebaseReady = true;
+  document.dispatchEvent(new Event('firebaseReady'));
+</script>
+
+<style>
+  :root{
+    --gold:#C9A84C;--gold-light:#F0D98B;--navy:#0B1629;--navy-mid:#162240;
+    --slate:#2D4A6B;--green:#2A7A4B;--green-light:#3DAB68;
+    --yellow-light:#EDBA2A;--gray-dark:#4A5568;--gray-mid:#718096;
+    --white:#F7F5F0;--off-white:#EDE9E0;--red:#E05252;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Manrope',sans-serif;background:var(--navy);color:var(--white);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0;}
+
+  /* LOGIN */
+  #login-screen{display:flex;justify-content:center;align-items:center;min-height:100vh;width:100%;background:radial-gradient(ellipse at 30% 30%,#1a2d4d,var(--navy));}
+  .login-card{background:rgba(22,34,64,.9);border:1px solid rgba(201,168,76,.25);border-radius:18px;padding:2.5rem 2rem;width:100%;max-width:380px;text-align:center;}
+  .login-icon{font-size:2.5rem;margin-bottom:.75rem;}
+  .login-title{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--gold-light);margin-bottom:.3rem;}
+  .login-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-mid);margin-bottom:1.75rem;}
+  .pw-input{width:100%;background:rgba(11,22,41,.7);border:1px solid rgba(201,168,76,.2);border-radius:9px;padding:11px 14px;color:var(--white);font-family:'Manrope',sans-serif;font-size:15px;outline:none;transition:border-color .2s;margin-bottom:.75rem;text-align:center;letter-spacing:4px;}
+  .pw-input:focus{border-color:rgba(201,168,76,.5);}
+  .pw-input::placeholder{letter-spacing:0;color:rgba(255,255,255,.22);}
+  .btn-login{width:100%;padding:13px;background:var(--gold);color:var(--navy);font-family:'Manrope',sans-serif;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:.2s;}
+  .btn-login:hover{background:var(--gold-light);}
+  .login-error{font-size:13px;color:var(--red);margin-top:.5rem;min-height:18px;}
+
+  /* ADMIN */
+  #admin-screen{display:none;flex-direction:column;width:100%;min-height:100vh;padding:1.5rem;}
+  #admin-screen.visible{display:flex;}
+  .admin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;max-width:900px;width:100%;}
+  .admin-title{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--gold-light);}
+  .admin-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-mid);}
+  .badge{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:5px 12px;border-radius:20px;border:1px solid rgba(201,168,76,.3);background:rgba(201,168,76,.1);color:var(--gold);}
+  .badge.green{border-color:rgba(42,122,75,.4);background:rgba(42,122,75,.1);color:var(--green-light);}
+  .badge.red{border-color:rgba(224,82,82,.3);background:rgba(224,82,82,.08);color:var(--red);}
+  .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:900px;width:100%;}
+  @media(max-width:640px){.admin-grid{grid-template-columns:1fr;}}
+  .card{background:rgba(22,34,64,.75);border:1px solid rgba(201,168,76,.15);border-radius:14px;padding:1.5rem;}
+  .card-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:1rem;}
+  .status-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;}
+  .status-row:last-child{border-bottom:none;}
+  .status-label{color:var(--gray-mid);}
+  .status-val{font-weight:700;color:var(--white);}
+  .status-val.gold{color:var(--gold-light);}
+  .btn{padding:11px 18px;border:none;border-radius:9px;cursor:pointer;font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;transition:.2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-gold{background:var(--gold);color:var(--navy);}
+  .btn-gold:hover:not(:disabled){background:var(--gold-light);}
+  .btn-green{background:var(--green);color:var(--white);}
+  .btn-green:hover:not(:disabled){background:var(--green-light);}
+  .btn-ghost{background:transparent;color:var(--gold);border:1px solid rgba(201,168,76,.3);}
+  .btn-ghost:hover:not(:disabled){background:rgba(201,168,76,.08);}
+  .btn-red{background:rgba(224,82,82,.15);color:var(--red);border:1px solid rgba(224,82,82,.3);}
+  .btn-red:hover:not(:disabled){background:rgba(224,82,82,.25);}
+  .btn-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;}
+  .team-list{display:flex;flex-direction:column;gap:5px;}
+  .team-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(11,22,41,.4);border-radius:8px;font-size:13px;}
+  .team-dot{width:8px;height:8px;border-radius:50%;background:var(--gray-dark);flex-shrink:0;}
+  .team-dot.ready{background:var(--green-light);}
+  .team-dot.done{background:var(--gold);}
+  .team-name-cell{flex:1;font-weight:600;}
+  .team-score-cell{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold-light);}
+  .team-status-cell{font-family:'DM Mono',monospace;font-size:10px;color:var(--gray-mid);}
+  .progress-bar-wrap{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin:1rem 0;overflow:hidden;}
+  .progress-bar-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .4s;}
+  .word-card{background:rgba(11,22,41,.6);border-radius:10px;padding:1rem;margin-top:.75rem;}
+  .word-display{font-family:'DM Serif Display',serif;font-size:2rem;color:var(--gold-light);letter-spacing:6px;text-transform:uppercase;margin-bottom:.4rem;}
+  .word-clue{font-size:13px;color:var(--gray-mid);font-style:italic;line-height:1.5;}
+  .round-nav{display:flex;gap:5px;margin-bottom:1rem;flex-wrap:wrap;}
+  .round-dot{width:32px;height:32px;border-radius:6px;background:rgba(11,22,41,.5);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--gray-mid);font-weight:600;}
+  .round-dot.current{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.1);color:var(--gold);}
+  .round-dot.done{border-color:rgba(42,122,75,.3);background:rgba(42,122,75,.08);color:var(--green-light);}
+  .log{background:rgba(11,22,41,.5);border-radius:8px;padding:.75rem;font-family:'DM Mono',monospace;font-size:11px;color:var(--gray-mid);max-height:120px;overflow-y:auto;line-height:1.8;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">Admin Panel</div>
+    <div class="login-sub">FinWordle Host Control</div>
+    <input type="password" class="pw-input" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn-login" onclick="doLogin()">Access Dashboard →</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ADMIN DASHBOARD -->
+<div id="admin-screen">
+  <div class="admin-header">
+    <div>
+      <div class="admin-title">FinWordle Admin</div>
+      <div class="admin-sub">Host Control Panel</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="badge" id="state-badge">No Session</div>
+      <button class="btn btn-ghost" style="padding:8px 14px;font-size:13px;" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="admin-grid">
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+      <!-- Session Status -->
+      <div class="card">
+        <div class="card-title">Session Status</div>
+        <div class="status-row"><span class="status-label">Round</span><span class="status-val gold" id="st-round">—</span></div>
+        <div class="status-row"><span class="status-label">Round State</span><span class="status-val" id="st-state">—</span></div>
+        <div class="status-row"><span class="status-label">Teams Ready</span><span class="status-val" id="st-ready">0 / 11</span></div>
+        <div class="status-row"><span class="status-label">Teams Done</span><span class="status-val" id="st-done">0 / 11</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="st-progress" style="width:0%"></div></div>
+      </div>
+
+      <!-- Current Word -->
+      <div class="card">
+        <div class="card-title">Current Round Word</div>
+        <div class="round-nav" id="round-nav"></div>
+        <div class="word-card">
+          <div class="word-display" id="word-display">—</div>
+          <div class="word-clue" id="word-clue">No active round</div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card">
+        <div class="card-title">Game Controls</div>
+        <div class="btn-row">
+          <button class="btn btn-gold" id="btn-start-round" onclick="startRound()" disabled>▶ Start Round</button>
+          <button class="btn btn-ghost" id="btn-show-results" onclick="showResults()" disabled>📊 Show Results</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btn-show-lb" onclick="showLeaderboard()" disabled>🏆 Leaderboard</button>
+          <button class="btn btn-ghost" id="btn-end-game" onclick="endGame()" disabled>🏁 End Game</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-red" onclick="resetSession()">↺ Reset Session</button>
+        </div>
+        <div id="control-msg" style="font-size:12px;color:var(--green-light);margin-top:.5rem;min-height:16px;"></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+      <!-- Team Progress -->
+      <div class="card">
+        <div class="card-title">Team Progress</div>
+        <div class="team-list" id="team-list"></div>
+      </div>
+
+      <!-- Activity Log -->
+      <div class="card">
+        <div class="card-title">Activity Log</div>
+        <div class="log" id="activity-log">Waiting for session data…</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════
+const ADMIN_PASSWORD = "finwordle2025"; // Change this!
+const gameSessionId = 'session1';
+const NUM_ROUNDS = 5;
+const NUM_TEAMS = 11;
+
+const WORD_BANK = [
+  {word:"DERIVE", clue:"Financial instruments whose value comes from an underlying asset."},
+  {word:"DILUTE", clue:"Reduction in ownership percentage due to new shares."},
+  {word:"OFFSET", clue:"To counterbalance or cancel out a financial position."},
+  {word:"HURDLE", clue:"Minimum rate of return required before profits are shared."},
+  {word:"ESCROW", clue:"Money held by a third party until conditions are met."}
+];
+
+// ═══════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════
+let isLoggedIn = false;
+
+function doLogin() {
+  const pw = document.getElementById('pw-input').value;
+  if(pw === ADMIN_PASSWORD){
+    isLoggedIn = true;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-screen').classList.add('visible');
+    initAdmin();
+  } else {
+    document.getElementById('login-error').textContent = 'Incorrect password.';
+    document.getElementById('pw-input').value = '';
+  }
+}
+
+function doLogout() {
+  isLoggedIn = false;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-screen').classList.remove('visible');
+  document.getElementById('pw-input').value = '';
+}
+
+// ═══════════════════════════════════════════
+//  FIREBASE
+// ═══════════════════════════════════════════
+let db, fbRef, fbSet, fbGet, fbOnValue, fbUpdate, fbRemove;
+let sessionData = null;
+let logLines = [];
+
+document.addEventListener('firebaseReady', () => {
+  db = window._db; fbRef = window._ref; fbSet = window._set;
+  fbGet = window._get; fbOnValue = window._onValue;
+  fbUpdate = window._update; fbRemove = window._remove;
+  if(isLoggedIn) initAdmin();
+});
+
+function initAdmin() {
+  if(!db) return;
+  fbOnValue(fbRef(db, `sessions/${gameSessionId}`), (snap) => {
+    if(!snap.exists()){ renderNoSession(); return; }
+    sessionData = snap.val();
+    renderDashboard(sessionData);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+function renderNoSession() {
+  sessionData = null;
+  document.getElementById('state-badge').textContent = 'No Session';
+  document.getElementById('state-badge').className = 'badge red';
+  document.getElementById('st-round').textContent = '—';
+  document.getElementById('st-state').textContent = 'No session found';
+  document.getElementById('st-ready').textContent = '0 / 11';
+  document.getElementById('st-done').textContent = '0 / 11';
+  document.getElementById('team-list').innerHTML = '<div style="font-size:13px;color:var(--gray-mid);">No session active. Players need to set up a game first.</div>';
+  setButtonStates('none');
+}
+
+function renderDashboard(data) {
+  const round = data.currentRound ?? 0;
+  const state = data.roundState ?? 'waiting';
+  const teams = data.teams || [];
+  const ready = data.teamReady ? Object.keys(data.teamReady).length : 0;
+  const subs = data.roundSubmissions || {};
+  const done = Object.values(subs).filter(s => s.done).length;
+
+  // State badge
+  const stateLabels = {waiting:'Waiting',active:'Round Active',results:'Showing Results',leaderboard:'Leaderboard',final:'Game Over'};
+  const stateCls = {waiting:'badge',active:'badge green',results:'badge',leaderboard:'badge',final:'badge gold'};
+  document.getElementById('state-badge').textContent = stateLabels[state] || state;
+  document.getElementById('state-badge').className = stateCls[state] || 'badge';
+
+  document.getElementById('st-round').textContent = `Round ${round+1} of ${NUM_ROUNDS}`;
+  document.getElementById('st-state').textContent = stateLabels[state] || state;
+  document.getElementById('st-ready').textContent = `${ready} / ${NUM_TEAMS}`;
+  document.getElementById('st-done').textContent = `${done} / ${NUM_TEAMS}`;
+  document.getElementById('st-progress').style.width = `${(done / NUM_TEAMS)*100}%`;
+
+  // Round nav
+  const nav = document.getElementById('round-nav');
+  nav.innerHTML = Array.from({length: NUM_ROUNDS}, (_,i) => {
+    let cls = 'round-dot';
+    if(i < round) cls += ' done';
+    if(i === round) cls += ' current';
+    return `<div class="${cls}">R${i+1}</div>`;
+  }).join('');
+
+  // Word display
+  const wordObj = WORD_BANK[round];
+  document.getElementById('word-display').textContent = wordObj.word;
+  document.getElementById('word-clue').textContent = wordObj.clue;
+
+  // Team list
+  const tl = document.getElementById('team-list');
+  tl.innerHTML = '';
+  teams.forEach((name, idx) => {
+    const isReady = data.teamReady?.[idx];
+    const sub = subs[idx];
+    const scores = data.scores?.[idx] || [];
+    const total = scores.reduce((a,b) => b !== undefined && b !== null ? a+b : a, 0);
+    const div = document.createElement('div');
+    div.className = 'team-row';
+    let dotCls = 'team-dot' + (sub?.done ? ' done' : isReady ? ' ready' : '');
+    let statusText = sub?.done ? `${sub.score} pts` : isReady ? 'Ready' : 'Not joined';
+    div.innerHTML = `<div class="${dotCls}"></div><div class="team-name-cell">${name}</div><div class="team-status-cell">${statusText}</div><div class="team-score-cell">Total: ${total}</div>`;
+    tl.appendChild(div);
+  });
+
+  // Button states
+  if(state === 'waiting') setButtonStates('pre-round');
+  else if(state === 'active') setButtonStates('in-round');
+  else if(state === 'results') setButtonStates('post-results');
+  else if(state === 'leaderboard') setButtonStates('post-lb');
+  else if(state === 'final') setButtonStates('final');
+}
+
+function setButtonStates(state) {
+  const startRound = document.getElementById('btn-start-round');
+  const showResults = document.getElementById('btn-show-results');
+  const showLb = document.getElementById('btn-show-lb');
+  const endGame = document.getElementById('btn-end-game');
+  // Reset
+  [startRound, showResults, showLb, endGame].forEach(b => b.disabled = true);
+  if(state === 'pre-round') { startRound.disabled = false; }
+  if(state === 'in-round') { showResults.disabled = false; }
+  if(state === 'post-results') { showLb.disabled = false; }
+  if(state === 'post-lb') {
+    const round = sessionData?.currentRound ?? 0;
+    if(round < NUM_ROUNDS - 1) startRound.disabled = false;
+    endGame.disabled = false;
+  }
+  if(state === 'final') { /* all disabled */ }
+  if(state === 'none') { /* all disabled */ }
+}
+
+// ═══════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════
+async function startRound() {
+  if(!sessionData) return;
+  const currentState = sessionData.roundState;
+  let nextRound = sessionData.currentRound ?? 0;
+
+  // If coming from leaderboard, advance round
+  if(currentState === 'leaderboard') nextRound++;
+
+  addLog(`▶ Starting Round ${nextRound+1}`);
+  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), {
+    roundState: 'active',
+    currentRound: nextRound,
+    roundSubmissions: {},
+  });
+  showControlMsg('Round started!');
+}
+
+async function showResults() {
+  addLog('📊 Showing round results');
+  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), { roundState: 'results' });
+  showControlMsg('Results shown to all teams.');
+}
+
+async function showLeaderboard() {
+  addLog('🏆 Showing leaderboard');
+  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), { roundState: 'leaderboard' });
+  showControlMsg('Leaderboard shown to all teams.');
+}
+
+async function endGame() {
+  if(!confirm('End the game and show final results to all teams?')) return;
+  addLog('🏁 Game ended — final results');
+  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), { roundState: 'final' });
+  showControlMsg('Final results shown!');
+}
+
+async function resetSession() {
+  if(!confirm('Reset and clear all session data? This cannot be undone.')) return;
+  addLog('↺ Session reset');
+  await fbRemove(fbRef(db, `sessions/${gameSessionId}`));
+  showControlMsg('Session cleared. Players will be redirected to setup.');
+  logLines = [];
+}
+
+function showControlMsg(msg) {
+  const el = document.getElementById('control-msg');
+  el.textContent = msg;
+  setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+function addLog(msg) {
+  const now = new Date();
+  const ts = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  logLines.unshift(`[${ts}] ${msg}`);
+  if(logLines.length > 20) logLines.pop();
+  document.getElementById('activity-log').textContent = logLines.join('\n');
+}
+</script>
+</body>
+</html>
