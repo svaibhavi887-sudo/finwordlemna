@@ -14,14 +14,15 @@
   // ═══════════════════════════════════════
   //  FIREBASE CONFIG — Replace with yours
   // ═══════════════════════════════════════
-  const firebaseConfig = {
-    apiKey: "REPLACE_WITH_YOUR_API_KEY",
-    authDomain: "REPLACE_WITH_YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://REPLACE_WITH_YOUR_PROJECT-default-rtdb.firebaseio.com",
-    projectId: "REPLACE_WITH_YOUR_PROJECT",
-    storageBucket: "REPLACE_WITH_YOUR_PROJECT.appspot.com",
-    messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
-    appId: "REPLACE_WITH_YOUR_APP_ID"
+const firebaseConfig = {
+  apiKey: "AIzaSyBP8F2OTa-lvvs16yZ9zdGHkz795TeJpQE",
+  authDomain: "finwordlemna.firebaseapp.com",
+  databaseURL: "https://finwordlemna-default-rtdb.firebaseio.com",
+  projectId: "finwordlemna",
+  storageBucket: "finwordlemna.firebasestorage.app",
+  messagingSenderId: "793224287034",
+  appId: "1:793224287034:web:9aa1ce14c639210d863603",
+  measurementId: "G-1WG5DVQG54"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -545,14 +546,15 @@ async function startGame() {
   currentRound = 0;
 
   // Write session to Firebase
-  await fbSet(fbRef(db, `sessions/${gameSessionId}`), {
-    teams: teams,
-    state: 'team-select',
-    currentRound: 0,
-    roundState: 'waiting', // 'waiting' | 'active' | 'done'
-    scores: teams.map(() => Array(NUM_ROUNDS).fill(null)),
-    roundSubmissions: {}
-  });
+await fbSet(fbRef(db, `sessions/${gameSessionId}`), {
+  teams: teams,
+  state: 'team-select',
+  currentRound: 0,
+  roundState: 'waiting',
+  scores: teams.map(() => Array(NUM_ROUNDS).fill(null)),
+  roundSubmissions: {},
+  teamReady: {} // 
+});
 
   showScreen('player-select-screen');
   renderTeamButtons();
