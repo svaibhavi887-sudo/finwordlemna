@@ -947,12 +947,17 @@ function showWaitingScreen(score, guesses, solved) {
 }
 
 function listenForAllDone() {
-  fbOnValue(fbRef(db, `sessions/${gameSessionId}/roundSubmissions`), (snap) => {
-    if(!snap.exists()) return;
-    const subs = snap.val();
-    renderWaitingProgress(subs);
-    const doneCount = Object.values(subs).filter(s => s.done).length;
-    document.getElementById('waiting-count').textContent = `${doneCount} / ${NUM_TEAMS} teams done`;
+  onValue(sessionRef, (snapshot) => {
+  const data = snapshot.val();
+  if(!data) return;
+
+  // 🔥 ADD THIS BLOCK
+  if(data.currentRound !== currentRound){
+    currentRound = data.currentRound;
+
+    resetRoundState();        // ✅ THIS FIXES YOUR BUG
+    startRoundForPlayer();    // your existing function
+  }
   });
 }
 
@@ -1108,6 +1113,20 @@ function listenForRoundStart() {
       if(!['final-screen'].includes(currentScreen)) showFinal();
     }
   });
+}function resetRoundState(){
+  currentGuesses = [];
+  currentRow = 0;
+  currentInput = '';
+  gameActive = false;
+
+  clearInterval(timerInterval);
+  timerInterval = null;
+
+  const grid = document.getElementById('grid');
+  if(grid) grid.innerHTML = '';
+
+  const msg = document.getElementById('message-bar');
+  if(msg) msg.textContent = '';
 }
 </script>
 </body>
