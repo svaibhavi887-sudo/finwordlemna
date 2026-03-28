@@ -309,7 +309,7 @@ function renderDashboard(data) {
   }).join('');
 
   // Word display
-  const wordObj = WORD_BANK[round];
+ const wordObj = WORD_BANK[round] || {word:"—", clue:"No active round"};
   document.getElementById('word-display').textContent = wordObj.word;
   document.getElementById('word-clue').textContent = wordObj.clue;
 
@@ -361,8 +361,26 @@ function setButtonStates(state) {
 // ═══════════════════════════════════════════
 async function startRound() {
   if(!sessionData) return;
-  const currentState = sessionData.roundState;
-  let nextRound = sessionData.currentRound ?? 0;
+
+  let currentRound = sessionData.currentRound ?? -1;
+
+  // ✅ Always increment properly
+  currentRound++;
+
+  if (currentRound >= WORD_BANK.length) {
+    alert("All rounds completed!");
+    return;
+  }
+
+  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), {
+    roundState: 'active',
+    currentRound: currentRound,
+
+    // 🔥 CRITICAL RESET
+    roundSubmissions: {},
+    teamReady: {}
+  });
+}
 
   // If coming from leaderboard, advance round
   if(currentState === 'leaderboard') nextRound++;
