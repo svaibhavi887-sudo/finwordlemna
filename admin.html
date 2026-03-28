@@ -221,7 +221,7 @@ const WORD_BANK = [
 // ═══════════════════════════════════════════
 let isLoggedIn = false;
 
-function doLogin() {
+window.doLogin = function(){ ... }
   const pw = document.getElementById('pw-input').value;
   if(pw === ADMIN_PASSWORD){
     isLoggedIn = true;
