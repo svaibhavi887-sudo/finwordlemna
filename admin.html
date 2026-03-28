@@ -6,38 +6,6 @@
 <title>FinWordle — Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, set, get, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-  // ═══════════════════════════════════════
-  //  FIREBASE CONFIG — same as index.html
-  // ═══════════════════════════════════════
-  const firebaseConfig = {
-  apiKey: "AIzaSyBP8F2OTa-lvvs16yZ9zdGHkz795TeJpQE",
-  authDomain: "finwordlemna.firebaseapp.com",
-  databaseURL: "https://finwordlemna-default-rtdb.firebaseio.com",
-  projectId: "finwordlemna",
-  storageBucket: "finwordlemna.firebasestorage.app",
-  messagingSenderId: "793224287034",
-  appId: "1:793224287034:web:9aa1ce14c639210d863603",
-  measurementId: "G-1WG5DVQG54"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  window._db = db;
-  window._ref = ref;
-  window._set = set;
-  window._get = get;
-  window._onValue = onValue;
-  window._update = update;
-  window._remove = remove;
-  window._firebaseReady = true;
-  document.dispatchEvent(new Event('firebaseReady'));
-</script>
-
 <style>
   :root{
     --gold:#C9A84C;--gold-light:#F0D98B;--navy:#0B1629;--navy-mid:#162240;
@@ -62,7 +30,7 @@
   .login-error{font-size:13px;color:var(--red);margin-top:.5rem;min-height:18px;}
 
   /* ADMIN */
-  #admin-screen{display:none;flex-direction:column;width:100%;min-height:100vh;padding:1.5rem;}
+  #admin-screen{display:none;flex-direction:column;width:100%;min-height:100vh;padding:1.5rem;align-items:center;}
   #admin-screen.visible{display:flex;}
   .admin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;max-width:900px;width:100%;}
   .admin-title{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--gold-light);}
@@ -118,7 +86,8 @@
     <div class="login-icon">🔐</div>
     <div class="login-title">Admin Panel</div>
     <div class="login-sub">FinWordle Host Control</div>
-    <input type="password" class="pw-input" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" class="pw-input" id="pw-input" placeholder="Enter password"
+      onkeydown="if(event.key==='Enter') doLogin()">
     <button class="btn-login" onclick="doLogin()">Access Dashboard →</button>
     <div class="login-error" id="login-error"></div>
   </div>
@@ -199,37 +168,100 @@
   </div>
 </div>
 
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, update, remove }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBP8F2OTa-lvvs16yZ9zdGHkz795TeJpQE",
+    authDomain: "finwordlemna.firebaseapp.com",
+    databaseURL: "https://finwordlemna-default-rtdb.firebaseio.com",
+    projectId: "finwordlemna",
+    storageBucket: "finwordlemna.firebasestorage.app",
+    messagingSenderId: "793224287034",
+    appId: "1:793224287034:web:9aa1ce14c639210d863603",
+    measurementId: "G-1WG5DVQG54"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Expose to global scope for non-module scripts
+  window._db      = db;
+  window._ref     = ref;
+  window._set     = set;
+  window._get     = get;
+  window._onValue = onValue;
+  window._update  = update;
+  window._remove  = remove;
+  window._firebaseReady = true;
+  document.dispatchEvent(new Event('firebaseReady'));
+</script>
+
 <script>
 // ═══════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════
-const ADMIN_PASSWORD = "finwordle2025"; // Change this!
-const gameSessionId = 'session1';
+const ADMIN_PASSWORD = "finwordle2025";
+const GAME_SESSION_ID = 'session1';
 const NUM_ROUNDS = 5;
-const NUM_TEAMS = 11;
+const NUM_TEAMS  = 11;
 
 const WORD_BANK = [
- {word:"YIELD",clue:"The income return on an investment, often expressed as a percentage.",def:"Income return on an investment as a percentage of its cost or market value."},
-  {word:"HEDGE",clue:"A risk-management strategy using offsetting positions to limit potential losses.",def:"An investment made to reduce the risk of adverse price movements in an asset."},
-   {word:"SHORT",clue:"Selling a borrowed security in the expectation of buying it back at a lower price.",def:"A position taken by selling borrowed securities, profiting if the price falls."},
-  {word:"DEBIT",clue:"An accounting entry that increases assets or decreases liabilities on the balance sheet.",def:"An accounting entry recording an increase in assets or a reduction in liabilities."},
-  {word:"FLOOR",clue:"The minimum interest rate specified in a financial contract, protecting against rate falls.",def:"A contractual lower bound on interest rates, protecting against further declines."},
+  { word:"YIELD", clue:"The income return on an investment, often expressed as a percentage.",           def:"Income return on an investment as a percentage of its cost or market value." },
+  { word:"HEDGE", clue:"A risk-management strategy using offsetting positions to limit potential losses.", def:"An investment made to reduce the risk of adverse price movements in an asset." },
+  { word:"SHORT", clue:"Selling a borrowed security in the expectation of buying it back at a lower price.", def:"A position taken by selling borrowed securities, profiting if the price falls." },
+  { word:"DEBIT", clue:"An accounting entry that increases assets or decreases liabilities on the balance sheet.", def:"An accounting entry recording an increase in assets or a reduction in liabilities." },
+  { word:"FLOOR", clue:"The minimum interest rate specified in a financial contract, protecting against rate falls.", def:"A contractual lower bound on interest rates, protecting against further declines." },
 ];
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let isLoggedIn  = false;
+let sessionData = null;
+let logLines    = [];
+let fbListener  = null;   // keep track of listener so we don't double-attach
+
+// Firebase helpers (populated once module fires)
+let db, fbRef, fbSet, fbGet, fbOnValue, fbUpdate, fbRemove;
+
+// ═══════════════════════════════════════════
+//  FIREBASE READY
+// ═══════════════════════════════════════════
+document.addEventListener('firebaseReady', () => {
+  db        = window._db;
+  fbRef     = window._ref;
+  fbSet     = window._set;
+  fbGet     = window._get;
+  fbOnValue = window._onValue;
+  fbUpdate  = window._update;
+  fbRemove  = window._remove;
+
+  // If user already logged in before Firebase finished loading, start now
+  if (isLoggedIn) attachListener();
+});
 
 // ═══════════════════════════════════════════
 //  AUTH
 // ═══════════════════════════════════════════
-let isLoggedIn = false;
-
-window.doLogin = function(){ ... }
+function doLogin() {
   const pw = document.getElementById('pw-input').value;
-  if(pw === ADMIN_PASSWORD){
+  const errEl = document.getElementById('login-error');
+
+  if (pw === ADMIN_PASSWORD) {
     isLoggedIn = true;
+    errEl.textContent = '';
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('admin-screen').classList.add('visible');
-    initAdmin();
+
+    // Firebase may already be ready
+    if (window._firebaseReady) attachListener();
+    // Otherwise, the firebaseReady event handler above will call attachListener()
   } else {
-    document.getElementById('login-error').textContent = 'Incorrect password.';
+    errEl.textContent = 'Incorrect password.';
     document.getElementById('pw-input').value = '';
   }
 }
@@ -239,188 +271,227 @@ function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('admin-screen').classList.remove('visible');
   document.getElementById('pw-input').value = '';
+  document.getElementById('login-error').textContent = '';
+  // Firebase realtime listener stays attached (harmless while logged out, reconnects on next login)
 }
 
-// ═══════════════════════════════════════════
-//  FIREBASE
-// ═══════════════════════════════════════════
-let db, fbRef, fbSet, fbGet, fbOnValue, fbUpdate, fbRemove;
-let sessionData = null;
-let logLines = [];
+// Make login function callable from inline onclick
+window.doLogin  = doLogin;
+window.doLogout = doLogout;
 
-document.addEventListener('firebaseReady', () => {
-  db = window._db; fbRef = window._ref; fbSet = window._set;
-  fbGet = window._get; fbOnValue = window._onValue;
-  fbUpdate = window._update; fbRemove = window._remove;
-  if(isLoggedIn) initAdmin();
-});
-
-function initAdmin() {
-  if(!db) return;
-  fbOnValue(fbRef(db, `sessions/${gameSessionId}`), (snap) => {
-    if(!snap.exists()){ renderNoSession(); return; }
-    sessionData = snap.val();
-    renderDashboard(sessionData);
+// ═══════════════════════════════════════════
+//  FIREBASE LISTENER
+// ═══════════════════════════════════════════
+function attachListener() {
+  if (!db || fbListener) return;   // already attached or DB not ready
+  fbListener = fbOnValue(fbRef(db, `sessions/${GAME_SESSION_ID}`), (snap) => {
+    if (!snap.exists()) {
+      renderNoSession();
+    } else {
+      sessionData = snap.val();
+      renderDashboard(sessionData);
+    }
   });
 }
 
 // ═══════════════════════════════════════════
-//  RENDER
+//  RENDER — NO SESSION
 // ═══════════════════════════════════════════
 function renderNoSession() {
   sessionData = null;
-  document.getElementById('state-badge').textContent = 'No Session';
-  document.getElementById('state-badge').className = 'badge red';
-  document.getElementById('st-round').textContent = '—';
-  document.getElementById('st-state').textContent = 'No session found';
-  document.getElementById('st-ready').textContent = '0 / 11';
-  document.getElementById('st-done').textContent = '0 / 11';
-  document.getElementById('team-list').innerHTML = '<div style="font-size:13px;color:var(--gray-mid);">No session active. Players need to set up a game first.</div>';
+  document.getElementById('state-badge').textContent  = 'No Session';
+  document.getElementById('state-badge').className    = 'badge red';
+  document.getElementById('st-round').textContent     = '—';
+  document.getElementById('st-state').textContent     = 'No session found';
+  document.getElementById('st-ready').textContent     = `0 / ${NUM_TEAMS}`;
+  document.getElementById('st-done').textContent      = `0 / ${NUM_TEAMS}`;
+  document.getElementById('st-progress').style.width  = '0%';
+  document.getElementById('word-display').textContent = '—';
+  document.getElementById('word-clue').textContent    = 'No active round';
+  document.getElementById('team-list').innerHTML =
+    '<div style="font-size:13px;color:var(--gray-mid);">No session active. Players need to set up a game first.</div>';
   setButtonStates('none');
 }
 
+// ═══════════════════════════════════════════
+//  RENDER — DASHBOARD
+// ═══════════════════════════════════════════
 function renderDashboard(data) {
-  const round = data.currentRound ?? 0;
-  const state = data.roundState ?? 'waiting';
-  const teams = data.teams || [];
-  const ready = data.teamReady ? Object.keys(data.teamReady).length : 0;
-  const subs = data.roundSubmissions || {};
-  const done = Object.values(subs).filter(s => s.done).length;
+  const round  = data.currentRound ?? 0;
+  const state  = data.roundState   ?? 'waiting';
+  const teams  = data.teams        || [];
+  const ready  = data.teamReady    ? Object.keys(data.teamReady).length : 0;
+  const subs   = data.roundSubmissions || {};
+  const done   = Object.values(subs).filter(s => s && s.done).length;
 
-  // State badge
-  const stateLabels = {waiting:'Waiting',active:'Round Active',results:'Showing Results',leaderboard:'Leaderboard',final:'Game Over'};
-  const stateCls = {waiting:'badge',active:'badge green',results:'badge',leaderboard:'badge',final:'badge gold'};
+  // ── State badge ──
+  const stateLabels = {
+    waiting:     'Waiting',
+    active:      'Round Active',
+    results:     'Showing Results',
+    leaderboard: 'Leaderboard',
+    final:       'Game Over'
+  };
+  const stateCls = {
+    waiting:     'badge',
+    active:      'badge green',
+    results:     'badge',
+    leaderboard: 'badge',
+    final:       'badge gold'
+  };
   document.getElementById('state-badge').textContent = stateLabels[state] || state;
-  document.getElementById('state-badge').className = stateCls[state] || 'badge';
+  document.getElementById('state-badge').className   = stateCls[state]    || 'badge';
 
-  document.getElementById('st-round').textContent = `Round ${round+1} of ${NUM_ROUNDS}`;
-  document.getElementById('st-state').textContent = stateLabels[state] || state;
-  document.getElementById('st-ready').textContent = `${ready} / ${NUM_TEAMS}`;
-  document.getElementById('st-done').textContent = `${done} / ${NUM_TEAMS}`;
-  document.getElementById('st-progress').style.width = `${(done / NUM_TEAMS)*100}%`;
+  // ── Status rows ──
+  document.getElementById('st-round').textContent    = `Round ${round + 1} of ${NUM_ROUNDS}`;
+  document.getElementById('st-state').textContent    = stateLabels[state] || state;
+  document.getElementById('st-ready').textContent    = `${ready} / ${NUM_TEAMS}`;
+  document.getElementById('st-done').textContent     = `${done}  / ${NUM_TEAMS}`;
+  document.getElementById('st-progress').style.width = `${(done / NUM_TEAMS) * 100}%`;
 
-  // Round nav
-  const nav = document.getElementById('round-nav');
-  nav.innerHTML = Array.from({length: NUM_ROUNDS}, (_,i) => {
+  // ── Round nav dots ──
+  document.getElementById('round-nav').innerHTML = Array.from({ length: NUM_ROUNDS }, (_, i) => {
     let cls = 'round-dot';
-    if(i < round) cls += ' done';
-    if(i === round) cls += ' current';
-    return `<div class="${cls}">R${i+1}</div>`;
+    if (i < round)  cls += ' done';
+    if (i === round) cls += ' current';
+    return `<div class="${cls}">R${i + 1}</div>`;
   }).join('');
 
-  // Word display
- const wordObj = WORD_BANK[round] || {word:"—", clue:"No active round"};
+  // ── Current word ──
+  const wordObj = WORD_BANK[round] || { word: '—', clue: 'No active round' };
   document.getElementById('word-display').textContent = wordObj.word;
-  document.getElementById('word-clue').textContent = wordObj.clue;
+  document.getElementById('word-clue').textContent    = wordObj.clue;
 
-  // Team list
+  // ── Team list ──
   const tl = document.getElementById('team-list');
   tl.innerHTML = '';
-  teams.forEach((name, idx) => {
-    const isReady = data.teamReady?.[idx];
-    const sub = subs[idx];
-    const scores = data.scores?.[idx] || [];
-    const total = scores.reduce((a,b) => b !== undefined && b !== null ? a+b : a, 0);
-    const div = document.createElement('div');
-    div.className = 'team-row';
-    let dotCls = 'team-dot' + (sub?.done ? ' done' : isReady ? ' ready' : '');
-    let statusText = sub?.done ? `${sub.score} pts` : isReady ? 'Ready' : 'Not joined';
-    div.innerHTML = `<div class="${dotCls}"></div><div class="team-name-cell">${name}</div><div class="team-status-cell">${statusText}</div><div class="team-score-cell">Total: ${total}</div>`;
-    tl.appendChild(div);
-  });
 
-  // Button states
-  if(state === 'waiting') setButtonStates('pre-round');
-  else if(state === 'active') setButtonStates('in-round');
-  else if(state === 'results') setButtonStates('post-results');
-  else if(state === 'leaderboard') setButtonStates('post-lb');
-  else if(state === 'final') setButtonStates('final');
-}
+  if (!teams.length) {
+    tl.innerHTML = '<div style="font-size:13px;color:var(--gray-mid);">No teams registered yet.</div>';
+  } else {
+    teams.forEach((name, idx) => {
+      const isReady  = data.teamReady?.[idx];
+      const sub      = subs[idx];
+      const scores   = data.scores?.[idx] || [];
+      const total    = scores.reduce((a, b) => (b !== undefined && b !== null ? a + b : a), 0);
+      const dotCls   = 'team-dot' + (sub?.done ? ' done' : isReady ? ' ready' : '');
+      const statusTx = sub?.done ? `${sub.score ?? 0} pts` : isReady ? 'Ready' : 'Not joined';
 
-function setButtonStates(state) {
-  const startRound = document.getElementById('btn-start-round');
-  const showResults = document.getElementById('btn-show-results');
-  const showLb = document.getElementById('btn-show-lb');
-  const endGame = document.getElementById('btn-end-game');
-  // Reset
-  [startRound, showResults, showLb, endGame].forEach(b => b.disabled = true);
-  if(state === 'pre-round') { startRound.disabled = false; }
-  if(state === 'in-round') { showResults.disabled = false; }
-  if(state === 'post-results') { showLb.disabled = false; }
-  if(state === 'post-lb') {
-    const round = sessionData?.currentRound ?? 0;
-    if(round < NUM_ROUNDS - 1) startRound.disabled = false;
-    endGame.disabled = false;
+      const div = document.createElement('div');
+      div.className = 'team-row';
+      div.innerHTML = `
+        <div class="${dotCls}"></div>
+        <div class="team-name-cell">${name}</div>
+        <div class="team-status-cell">${statusTx}</div>
+        <div class="team-score-cell">Total: ${total}</div>`;
+      tl.appendChild(div);
+    });
   }
-  if(state === 'final') { /* all disabled */ }
-  if(state === 'none') { /* all disabled */ }
+
+  // ── Button states ──
+  if      (state === 'waiting')     setButtonStates('pre-round');
+  else if (state === 'active')      setButtonStates('in-round');
+  else if (state === 'results')     setButtonStates('post-results');
+  else if (state === 'leaderboard') setButtonStates('post-lb');
+  else if (state === 'final')       setButtonStates('final');
+  else                              setButtonStates('none');
 }
 
 // ═══════════════════════════════════════════
-//  CONTROLS
+//  BUTTON STATES
 // ═══════════════════════════════════════════
+function setButtonStates(state) {
+  const bStart   = document.getElementById('btn-start-round');
+  const bResults = document.getElementById('btn-show-results');
+  const bLb      = document.getElementById('btn-show-lb');
+  const bEnd     = document.getElementById('btn-end-game');
+
+  // Disable all first
+  [bStart, bResults, bLb, bEnd].forEach(b => b.disabled = true);
+
+  if (state === 'pre-round')    { bStart.disabled   = false; }
+  if (state === 'in-round')     { bResults.disabled = false; }
+  if (state === 'post-results') { bLb.disabled      = false; }
+  if (state === 'post-lb') {
+    const round = sessionData?.currentRound ?? 0;
+    if (round < NUM_ROUNDS - 1) bStart.disabled = false;
+    bEnd.disabled = false;
+  }
+  // 'final' and 'none' → all disabled (already done above)
+}
+
+// ═══════════════════════════════════════════
+//  GAME CONTROLS
+// ═══════════════════════════════════════════
+
+// Start Round — handles both the very first round AND advancing after leaderboard
 async function startRound() {
-  if(!sessionData) return;
+  if (!db || !sessionData) return;
 
-  let currentRound = sessionData.currentRound ?? -1;
+  const currentState = sessionData.roundState ?? 'waiting';
+  const currentRound = sessionData.currentRound ?? -1;
 
-  // ✅ Always increment properly
-  currentRound++;
+  // Advance only when coming from leaderboard; first start keeps round 0
+  const nextRound = (currentState === 'leaderboard') ? currentRound + 1 : 0;
 
-  if (currentRound >= WORD_BANK.length) {
-    alert("All rounds completed!");
+  if (nextRound >= WORD_BANK.length) {
+    alert('All rounds have been completed! Use End Game instead.');
     return;
   }
 
-  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), {
-    roundState: 'active',
-    currentRound: currentRound,
+  addLog(`▶ Starting Round ${nextRound + 1}`);
 
-    // 🔥 CRITICAL RESET
-    roundSubmissions: {},
-    teamReady: {}
+  await fbUpdate(fbRef(db, `sessions/${GAME_SESSION_ID}`), {
+    roundState:        'active',
+    currentRound:      nextRound,
+    roundSubmissions:  {},   // clear previous round submissions
+    teamReady:         {},   // reset ready flags
   });
-}
 
-  // If coming from leaderboard, advance round
-  if(currentState === 'leaderboard') nextRound++;
-
-  addLog(`▶ Starting Round ${nextRound+1}`);
-  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), {
-    roundState: 'active',
-    currentRound: nextRound,
-    roundSubmissions: {},
-  });
-  showControlMsg('Round started!');
+  showControlMsg(`Round ${nextRound + 1} started!`);
 }
 
 async function showResults() {
+  if (!db) return;
   addLog('📊 Showing round results');
-  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), { roundState: 'results' });
+  await fbUpdate(fbRef(db, `sessions/${GAME_SESSION_ID}`), { roundState: 'results' });
   showControlMsg('Results shown to all teams.');
 }
 
 async function showLeaderboard() {
+  if (!db) return;
   addLog('🏆 Showing leaderboard');
-  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), { roundState: 'leaderboard' });
+  await fbUpdate(fbRef(db, `sessions/${GAME_SESSION_ID}`), { roundState: 'leaderboard' });
   showControlMsg('Leaderboard shown to all teams.');
 }
 
 async function endGame() {
-  if(!confirm('End the game and show final results to all teams?')) return;
+  if (!db) return;
+  if (!confirm('End the game and show final results to all teams?')) return;
   addLog('🏁 Game ended — final results');
-  await fbUpdate(fbRef(db, `sessions/${gameSessionId}`), { roundState: 'final' });
-  showControlMsg('Final results shown!');
+  await fbUpdate(fbRef(db, `sessions/${GAME_SESSION_ID}`), { roundState: 'final' });
+  showControlMsg('Final results shown to all teams!');
 }
 
 async function resetSession() {
-  if(!confirm('Reset and clear all session data? This cannot be undone.')) return;
+  if (!db) return;
+  if (!confirm('Reset and clear ALL session data? This cannot be undone.')) return;
   addLog('↺ Session reset');
-  await fbRemove(fbRef(db, `sessions/${gameSessionId}`));
-  showControlMsg('Session cleared. Players will be redirected to setup.');
+  await fbRemove(fbRef(db, `sessions/${GAME_SESSION_ID}`));
   logLines = [];
+  showControlMsg('Session cleared. Players will be redirected to setup.');
 }
 
+// Expose controls to inline onclick handlers
+window.startRound     = startRound;
+window.showResults    = showResults;
+window.showLeaderboard = showLeaderboard;
+window.endGame        = endGame;
+window.resetSession   = resetSession;
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
 function showControlMsg(msg) {
   const el = document.getElementById('control-msg');
   el.textContent = msg;
@@ -429,9 +500,10 @@ function showControlMsg(msg) {
 
 function addLog(msg) {
   const now = new Date();
-  const ts = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  const pad = n => String(n).padStart(2, '0');
+  const ts  = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
   logLines.unshift(`[${ts}] ${msg}`);
-  if(logLines.length > 20) logLines.pop();
+  if (logLines.length > 20) logLines.pop();
   document.getElementById('activity-log').textContent = logLines.join('\n');
 }
 </script>
